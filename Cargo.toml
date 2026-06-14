@@ -1,0 +1,50 @@
+[workspace]
+members  = ["crates/*", "examples"]
+resolver = "2"
+
+[workspace.package]
+version      = "0.1.0"
+edition      = "2024"
+rust-version = "1.85"
+license      = "MIT OR Apache-2.0"
+repository   = "https://github.com/throgxyz/tronz"
+
+[workspace.dependencies]
+# internal
+tronz-primitives = { path = "crates/primitives", version = "0.1.0", default-features = false }
+tronz-signer     = { path = "crates/signer",     version = "0.1.0", default-features = false }
+tronz-provider   = { path = "crates/provider",   version = "0.1.0", default-features = false }
+tronz-contract   = { path = "crates/contract",   version = "0.1.0", default-features = false }
+
+# alloy (reused directly)
+alloy-primitives = { version = "1", default-features = false, features = ["std", "serde"] }
+alloy-sol-types  = { version = "1", default-features = false, features = ["std"] }
+alloy-sol-macro  = { version = "1", default-features = false }
+alloy-dyn-abi    = { version = "1", default-features = false, features = ["std"] }
+alloy-json-abi   = { version = "1", default-features = false, features = ["std"] }
+
+# crypto
+k256 = { version = "0.13", default-features = false, features = ["ecdsa", "std"] }
+sha2 = { version = "0.10", default-features = false }
+bs58 = { version = "0.5",  features = ["check"] }
+
+# proto / grpc
+prost       = { version = "0.14" }
+prost-types = { version = "0.14" }
+tonic       = { version = "0.14", default-features = false, features = ["transport", "codegen", "tls-ring"] }
+tonic-prost = { version = "0.14" }
+
+# async
+tokio   = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time"] }
+futures = { version = "0.3" }
+
+# serde
+serde      = { version = "1", features = ["derive"] }
+serde_json = { version = "1" }
+
+# error
+thiserror = { version = "2" }
+
+# misc
+tracing = { version = "0.1" }
+hex     = { version = "0.4" }

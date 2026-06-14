@@ -1,0 +1,16 @@
+[package]
+name         = "tronz-primitives"
+description  = "Leaf primitive types for the tronz TRON SDK (Address, Trx, ResourceCode, signatures)."
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+repository   = { workspace = true }
+
+[dependencies]
+alloy-primitives = { workspace = true }
+k256             = { workspace = true }
+bs58             = { workspace = true }
+hex              = { workspace = true }
+serde            = { workspace = true }
+thiserror        = { workspace = true }

@@ -1,0 +1,31 @@
+[package]
+name         = "tronz-contract"
+description  = "ABI bindings and contract instances for the tronz TRON SDK."
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+repository   = { workspace = true }
+
+[dependencies]
+tronz-primitives = { workspace = true }
+tronz-provider   = { workspace = true, optional = true }
+alloy-primitives = { workspace = true, optional = true }
+alloy-sol-types  = { workspace = true }
+alloy-sol-macro  = { workspace = true }
+alloy-dyn-abi    = { workspace = true, optional = true }
+alloy-json-abi   = { workspace = true, optional = true }
+thiserror        = { workspace = true, optional = true }
+
+[features]
+# Provider-bound contract instances: ContractInstance, Trc20Instance, etc.
+provider = [
+    "dep:tronz-provider",
+    "dep:thiserror",
+    "dep:alloy-primitives",
+    "dep:alloy-dyn-abi",
+    "dep:alloy-json-abi",
+]
+
+[dev-dependencies]
+hex = { workspace = true }

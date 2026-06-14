@@ -1,0 +1,15 @@
+[default.extend-words]
+# TRON-specific abbreviations that typos would otherwise flag
+tronz = "tronz"
+nile  = "nile"
+trx   = "trx"
+sun   = "sun"
+# Proto-generated names
+extention = "extention"   # TRON proto uses "TransactionExtention" (sic)
+
+[files]
+extend-exclude = [
+    "target",
+    "*.lock",
+    "crates/tronz-provider/src/proto",   # generated proto code
+]

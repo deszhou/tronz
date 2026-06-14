@@ -1,0 +1,27 @@
+[package]
+name         = "tronz"
+description  = "Idiomatic, async-first Rust SDK for the TRON network."
+version      = { workspace = true }
+edition      = { workspace = true }
+rust-version = { workspace = true }
+license      = { workspace = true }
+repository   = { workspace = true }
+
+[dependencies]
+tronz-primitives = { workspace = true }
+tronz-signer     = { workspace = true }
+tronz-provider   = { workspace = true }
+tronz-contract   = { workspace = true, optional = true, features = ["provider"] }
+
+[features]
+default = ["provider-grpc-tls", "contract", "signer-local"]
+full    = ["default"]
+
+# Transport backends (forwarded to tronz-provider).
+provider-grpc-tls = ["tronz-provider/grpc-tls"]
+provider-grpc     = ["tronz-provider/grpc"]
+# Contract bindings (TRC20/TRC721).
+contract = ["dep:tronz-contract"]
+# LocalSigner is always compiled in tronz-signer; this is a documentation flag.
+signer-local = []
+

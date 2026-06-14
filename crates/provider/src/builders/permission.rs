@@ -1,0 +1,75 @@
+//! Account permission (multisig) update builder.
+
+use tronz_primitives::Address;
+
+use crate::error::{Error, Result};
+use crate::provider::{PendingTransaction, TronProvider};
+use crate::types::{
+    AccountPermissionUpdateContract, ContractType, Permission, TransactionRequest,
+};
+
+/// Update an account's owner/witness/active permissions (multisig).
+pub struct AccountPermissionUpdateBuilder<'a, P> {
+    provider: &'a P,
+    owner: Option<Address>,
+    owner_permission: Option<Permission>,
+    witness: Option<Permission>,
+    actives: Vec<Permission>,
+}
+
+impl<'a, P: TronProvider> AccountPermissionUpdateBuilder<'a, P> {
+    /// Start a new builder.
+    pub fn new(provider: &'a P) -> Self {
+        Self {
+            provider,
+            owner: None,
+            owner_permission: None,
+            witness: None,
+            actives: Vec::new(),
+        }
+    }
+
+    /// Override the account being updated.
+    pub fn owner(mut self, owner: Address) -> Self {
+        self.owner = Some(owner);
+        self
+    }
+
+    /// Set the new owner permission.
+    pub fn owner_permission(mut self, permission: Permission) -> Self {
+        self.owner_permission = Some(permission);
+        self
+    }
+
+    /// Set the new witness permission.
+    pub fn witness(mut self, permission: Permission) -> Self {
+        self.witness = Some(permission);
+        self
+    }
+
+    /// Set the new active permissions.
+    pub fn actives(mut self, actives: Vec<Permission>) -> Self {
+        self.actives = actives;
+        self
+    }
+
+    /// Build, sign, and broadcast.
+    pub async fn send(self) -> Result<PendingTransaction<P>> {
+        let owner = self
+            .owner
+            .or_else(|| self.provider.signer_address())
+            .ok_or(Error::NoSigner)?;
+        let req = TransactionRequest {
+            contract: Some(ContractType::AccountPermissionUpdate(
+                AccountPermissionUpdateContract {
+                    owner_address: owner,
+                    owner: self.owner_permission,
+                    witness: self.witness,
+                    actives: self.actives,
+                },
+            )),
+            ..Default::default()
+        };
+        self.provider.send_transaction(req).await
+    }
+}
