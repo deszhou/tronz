@@ -11,7 +11,6 @@ mod signer;
 pub use signer::{NoSigner, TronSigner};
 
 mod local;
-pub use local::LocalSigner;
-
 pub use k256;
+pub use local::LocalSigner;
 pub use tronz_primitives::RecoverableSignature;

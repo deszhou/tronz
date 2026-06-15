@@ -2,8 +2,7 @@
 
 use tronz_primitives::{Address, Bytes, Trx};
 use tronz_provider::{
-    Error as ProviderError,
-    PendingTransaction, TronProvider,
+    Error as ProviderError, PendingTransaction, TronProvider,
     transport::TronTransport as _,
     types::{ContractType, TransactionRequest, TriggerSmartContract},
 };
@@ -88,7 +87,10 @@ impl<P: TronProvider> CallBuilder<P> {
             call_token_value: self.call_token_value,
             token_id: self.token_id,
         };
-        self.provider.estimate_energy(params).await.map_err(ContractError::Provider)
+        self.provider
+            .estimate_energy(params)
+            .await
+            .map_err(ContractError::Provider)
     }
 
     /// Execute as a **constant call** (`trigger_constant_contract`).
@@ -122,17 +124,20 @@ impl<P: TronProvider> CallBuilder<P> {
     /// Requires a signer to be attached to the provider. The transaction is
     /// filled (TAPOS, fee-limit), signed, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let caller = self.provider.signer_address().ok_or(ContractError::NoSigner)?;
-        let req = TransactionRequest::default().with_contract(
-            ContractType::TriggerSmartContract(TriggerSmartContract {
+        let caller = self
+            .provider
+            .signer_address()
+            .ok_or(ContractError::NoSigner)?;
+        let req = TransactionRequest::default().with_contract(ContractType::TriggerSmartContract(
+            TriggerSmartContract {
                 owner_address: caller,
                 contract_address: self.address,
                 call_value: self.call_value,
                 data: self.data,
                 call_token_value: self.call_token_value,
                 token_id: self.token_id,
-            }),
-        );
+            },
+        ));
         Ok(self.provider.send_transaction(req).await?)
     }
 }

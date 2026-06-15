@@ -33,6 +33,8 @@ pub enum ContractType {
     AccountPermissionUpdate(AccountPermissionUpdateContract),
     /// Deploy a new smart contract.
     CreateSmartContract(CreateSmartContract),
+    /// Issue (create) a new TRC10 native token.
+    AssetIssue(AssetIssueContract),
     /// Transfer a TRC10 token.
     TransferAsset(TransferAssetContract),
     /// Activate a new account by sending TRX to it.
@@ -67,6 +69,7 @@ impl ContractType {
             ContractType::WithdrawBalance(c) => c.owner_address,
             ContractType::AccountPermissionUpdate(c) => c.owner_address,
             ContractType::CreateSmartContract(c) => c.owner_address,
+            ContractType::AssetIssue(c) => c.owner_address,
             ContractType::TransferAsset(c) => c.owner_address,
             ContractType::CreateAccount(c) => c.owner_address,
             ContractType::VoteWitness(c) => c.owner_address,
@@ -204,6 +207,54 @@ pub struct CreateSmartContract {
     pub origin_energy_limit: i64,
     /// Contract name.
     pub name: String,
+}
+
+/// Issue (create) a new TRC10 native token.
+///
+/// After submission the token receives a numeric ID assigned by the network.
+/// Query it via [`Trc10Api::get_asset_issue_by_account`](crate::ext::Trc10Api::get_asset_issue_by_account).
+#[derive(Clone, Debug)]
+pub struct AssetIssueContract {
+    /// Issuer address.
+    pub owner_address: Address,
+    /// Full token name (e.g. `"MyToken"`).
+    pub name: String,
+    /// Token abbreviation / symbol (e.g. `"MTK"`).
+    pub abbr: String,
+    /// Human-readable description.
+    pub description: String,
+    /// Project URL.
+    pub url: String,
+    /// Total supply in the token's smallest unit.
+    pub total_supply: i64,
+    /// Decimal precision (0–6).
+    pub precision: i32,
+    /// Exchange rate denominator: how many TRX units correspond to `num` tokens.
+    ///
+    /// Together `trx_num / num` defines the ICO exchange rate.
+    /// Set both to `1` for a 1 TRX = 1 token rate.
+    pub trx_num: i32,
+    /// Exchange rate numerator: number of tokens per `trx_num` TRX units.
+    pub num: i32,
+    /// ICO start time in Unix milliseconds (must be in the future).
+    pub start_time: i64,
+    /// ICO end time in Unix milliseconds (must be after `start_time`).
+    pub end_time: i64,
+    /// Free bandwidth each account can use for token transfers (per-account limit).
+    pub free_asset_net_limit: i64,
+    /// Total free bandwidth available across all token transfers.
+    pub public_free_asset_net_limit: i64,
+    /// Portions of the supply that are locked for a number of days.
+    pub frozen_supply: Vec<FrozenSupply>,
+}
+
+/// A portion of a TRC10 token supply locked for a fixed period.
+#[derive(Clone, Debug)]
+pub struct FrozenSupply {
+    /// Amount locked (in the token's smallest unit).
+    pub frozen_amount: i64,
+    /// Lock duration in days.
+    pub frozen_days: i64,
 }
 
 /// Transfer a TRC10 (native) token.

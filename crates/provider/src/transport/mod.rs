@@ -9,13 +9,13 @@ use std::collections::HashMap;
 use tronz_primitives::{Address, ResourceCode, Trx, TxId};
 
 use crate::types::{
-    AccountInfo, AccountPermissionUpdateContract, AccountResource, AssetInfo, BlockInfo,
-    ConstantCallResult, CreateAccountContract, CreateSmartContract, DelegatedResource,
+    AccountInfo, AccountPermissionUpdateContract, AccountResource, AssetInfo, AssetIssueContract,
+    BlockInfo, ConstantCallResult, CreateAccountContract, CreateSmartContract, DelegatedResource,
     DelegatedResourceIndex, FreezeBalanceV2Contract, RawTransaction, SignedTransaction,
     SmartContractInfo, TransactionInfo, TransferAssetContract, TransferContract,
     TriggerSmartContract, UnDelegateResourceContract, UnfreezeBalanceV2Contract,
-    UpdateAccountContract, VoteWitnessContract, WitnessInfo, WithdrawBalanceContract,
-    WithdrawExpireUnfreezeContract,
+    UpdateAccountContract, VoteWitnessContract, WithdrawBalanceContract,
+    WithdrawExpireUnfreezeContract, WitnessInfo,
 };
 
 pub mod grpc;
@@ -182,10 +182,8 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<Trx, Self::Error>> + Send;
 
     /// Query the pending (unclaimed) reward for an account.
-    fn get_reward(
-        &self,
-        address: Address,
-    ) -> impl Future<Output = Result<Trx, Self::Error>> + Send;
+    fn get_reward(&self, address: Address)
+    -> impl Future<Output = Result<Trx, Self::Error>> + Send;
 
     // --- Network ---
 
@@ -210,11 +208,15 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<SmartContractInfo, Self::Error>> + Send;
 
     /// List all super representatives and candidates.
-    fn list_witnesses(
-        &self,
-    ) -> impl Future<Output = Result<Vec<WitnessInfo>, Self::Error>> + Send;
+    fn list_witnesses(&self) -> impl Future<Output = Result<Vec<WitnessInfo>, Self::Error>> + Send;
 
     // --- TRC10 ---
+
+    /// Build a TRC10 token issuance transaction.
+    fn create_asset_issue(
+        &self,
+        params: AssetIssueContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
 
     /// Build a TRC10 token transfer transaction.
     fn transfer_asset(

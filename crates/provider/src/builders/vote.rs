@@ -2,9 +2,11 @@
 
 use tronz_primitives::Address;
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::types::{ContractType, SrVote, TransactionRequest, VoteWitnessContract};
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    types::{ContractType, SrVote, TransactionRequest, VoteWitnessContract},
+};
 
 /// Builds a super-representative vote transaction.
 ///
@@ -34,7 +36,12 @@ pub struct VoteBuilder<'a, P> {
 
 impl<'a, P: TronProvider> VoteBuilder<'a, P> {
     pub(crate) fn new(provider: &'a P) -> Self {
-        Self { provider, owner: None, votes: Vec::new(), memo: None }
+        Self {
+            provider,
+            owner: None,
+            votes: Vec::new(),
+            memo: None,
+        }
     }
 
     /// Override the voter address (defaults to the provider's signer).
@@ -47,15 +54,20 @@ impl<'a, P: TronProvider> VoteBuilder<'a, P> {
     ///
     /// Call multiple times to vote for several SRs in one transaction.
     pub fn vote(mut self, sr_address: Address, count: i64) -> Self {
-        self.votes.push(SrVote { vote_address: sr_address, vote_count: count });
+        self.votes.push(SrVote {
+            vote_address: sr_address,
+            vote_count: count,
+        });
         self
     }
 
     /// Append multiple SR votes at once.
     pub fn votes(mut self, votes: impl IntoIterator<Item = (Address, i64)>) -> Self {
-        self.votes.extend(
-            votes.into_iter().map(|(addr, count)| SrVote { vote_address: addr, vote_count: count }),
-        );
+        self.votes
+            .extend(votes.into_iter().map(|(addr, count)| SrVote {
+                vote_address: addr,
+                vote_count: count,
+            }));
         self
     }
 

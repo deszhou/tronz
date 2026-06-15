@@ -3,8 +3,10 @@
 //! TRON denominates value in *sun*, where `1 TRX = 1_000_000 sun`. [`Trx`]
 //! wraps an `i64` sun value to match the protobuf `sint64` representation.
 
-use core::fmt;
-use core::ops::{Add, Sub};
+use core::{
+    fmt,
+    ops::{Add, Sub},
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -78,14 +80,14 @@ impl Trx {
 impl Add for Trx {
     type Output = Trx;
     fn add(self, rhs: Trx) -> Trx {
-        Trx(self.0 + rhs.0)
+        Trx(self.0.saturating_add(rhs.0))
     }
 }
 
 impl Sub for Trx {
     type Output = Trx;
     fn sub(self, rhs: Trx) -> Trx {
-        Trx(self.0 - rhs.0)
+        Trx(self.0.saturating_sub(rhs.0))
     }
 }
 

@@ -1,17 +1,18 @@
 //! The base [`RootProvider`] over a transport.
 
-use std::collections::HashMap;
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use tronz_primitives::{Address, ResourceCode, Trx, TxId};
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::transport::TronTransport;
-use crate::types::{
-    AccountInfo, AccountResource, BlockInfo, DelegatedResource, DelegatedResourceIndex,
-    SignedTransaction, SmartContractInfo, TransactionInfo, TransactionRequest, TriggerSmartContract,
-    WitnessInfo,
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    transport::TronTransport,
+    types::{
+        AccountInfo, AccountResource, BlockInfo, DelegatedResource, DelegatedResourceIndex,
+        SignedTransaction, SmartContractInfo, TransactionInfo, TransactionRequest,
+        TriggerSmartContract, WitnessInfo,
+    },
 };
 
 /// The base provider: wraps a transport (and optional signer address) in an
@@ -70,11 +71,19 @@ impl<T: TronTransport> TronProvider for RootProvider<T> {
     }
 
     async fn get_now_block(&self) -> Result<BlockInfo> {
-        self.inner.transport.get_now_block().await.map_err(|e| Error::Transport(e.into()))
+        self.inner
+            .transport
+            .get_now_block()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
     }
 
     async fn get_account(&self, address: Address) -> Result<AccountInfo> {
-        self.inner.transport.get_account(address).await.map_err(|e| Error::Transport(e.into()))
+        self.inner
+            .transport
+            .get_account(address)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
     }
 
     async fn get_account_resource(&self, address: Address) -> Result<AccountResource> {
@@ -124,11 +133,7 @@ impl<T: TronTransport> TronProvider for RootProvider<T> {
             .map_err(|e| Error::Transport(e.into()))
     }
 
-    async fn get_can_delegate_max(
-        &self,
-        address: Address,
-        resource: ResourceCode,
-    ) -> Result<Trx> {
+    async fn get_can_delegate_max(&self, address: Address, resource: ResourceCode) -> Result<Trx> {
         self.inner
             .transport
             .get_can_delegate_max(address, resource)
@@ -137,7 +142,11 @@ impl<T: TronTransport> TronProvider for RootProvider<T> {
     }
 
     async fn get_reward(&self, address: Address) -> Result<Trx> {
-        self.inner.transport.get_reward(address).await.map_err(|e| Error::Transport(e.into()))
+        self.inner
+            .transport
+            .get_reward(address)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
     }
 
     async fn chain_parameters(&self) -> Result<HashMap<String, i64>> {
@@ -163,7 +172,6 @@ impl<T: TronTransport> TronProvider for RootProvider<T> {
             .await
             .map_err(|e| Error::Transport(e.into()))
     }
-
 
     async fn get_can_withdraw_unfreeze_amount(
         &self,
@@ -193,16 +201,17 @@ impl<T: TronTransport> TronProvider for RootProvider<T> {
             .map_err(|e| Error::Transport(e.into()))
     }
 
-    async fn send_transaction(
-        &self,
-        _req: TransactionRequest,
-    ) -> Result<PendingTransaction<Self>> {
+    async fn send_transaction(&self, _req: TransactionRequest) -> Result<PendingTransaction<Self>> {
         Err(Error::NoSigner)
     }
 
     async fn broadcast(&self, tx: SignedTransaction) -> Result<PendingTransaction<Self>> {
         let tx_id = tx.raw.tx_id();
-        self.inner.transport.broadcast_transaction(&tx).await.map_err(|e| Error::Transport(e.into()))?;
+        self.inner
+            .transport
+            .broadcast_transaction(&tx)
+            .await
+            .map_err(|e| Error::Transport(e.into()))?;
         Ok(PendingTransaction::new(self.clone(), tx_id))
     }
 }

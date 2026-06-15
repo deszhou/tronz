@@ -17,4 +17,4 @@
 //! ```
 
 mod trc10;
-pub use trc10::{Trc10Api, TransferTrc10Builder};
+pub use trc10::{TransferTrc10Builder, Trc10Api};

@@ -2,7 +2,7 @@
 
 use core::future::Future;
 
-use tronz_primitives::{Address, RecoverableSignature, B256};
+use tronz_primitives::{Address, B256, RecoverableSignature};
 
 use crate::error::SignerError;
 

@@ -3,10 +3,9 @@
 use core::future::Future;
 
 use k256::ecdsa::SigningKey;
-use tronz_primitives::{Address, RecoverableSignature, B256};
+use tronz_primitives::{Address, B256, RecoverableSignature};
 
-use crate::error::SignerError;
-use crate::signer::TronSigner;
+use crate::{error::SignerError, signer::TronSigner};
 
 /// A signer that holds a secp256k1 private key in memory.
 #[derive(Clone)]
@@ -28,10 +27,9 @@ impl LocalSigner {
     pub fn from_hex(s: &str) -> Result<Self, SignerError> {
         let s = s.strip_prefix("0x").unwrap_or(s);
         let bytes = hex::decode(s)?;
-        let arr: [u8; 32] = bytes
-            .as_slice()
-            .try_into()
-            .map_err(|_| SignerError::InvalidKey(format!("expected 32 bytes, got {}", bytes.len())))?;
+        let arr: [u8; 32] = bytes.as_slice().try_into().map_err(|_| {
+            SignerError::InvalidKey(format!("expected 32 bytes, got {}", bytes.len()))
+        })?;
         Self::from_bytes(&arr)
     }
 

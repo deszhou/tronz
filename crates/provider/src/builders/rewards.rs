@@ -2,9 +2,11 @@
 
 use tronz_primitives::Address;
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::types::{ContractType, TransactionRequest, WithdrawBalanceContract};
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    types::{ContractType, TransactionRequest, WithdrawBalanceContract},
+};
 
 /// Claim accumulated block/vote rewards (`WithdrawBalance`).
 ///

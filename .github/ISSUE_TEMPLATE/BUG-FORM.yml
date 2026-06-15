@@ -1,0 +1,56 @@
+name: Bug report
+description: File a bug report
+labels: ["bug"]
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check that the bug hasn't already been reported in the issue tracker.
+        Thank you for taking the time to report this!
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which crate or area is the bug in?
+      multiple: true
+      options:
+        - tronz (umbrella)
+        - tronz-primitives
+        - tronz-signer
+        - tronz-provider (transport / gRPC)
+        - tronz-provider (provider / fillers / builders)
+        - tronz-contract (TRC20 / TRC721)
+        - examples
+        - other
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: tronz version
+      placeholder: "Run `cargo tree | grep 'tronz '` and paste the output"
+  - type: dropdown
+    attributes:
+      label: Operating System
+      options:
+        - Linux
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Other (please specify)
+  - type: dropdown
+    attributes:
+      label: Network
+      description: Which TRON network were you targeting?
+      options:
+        - Mainnet
+        - Nile testnet
+        - Local node
+        - Other
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: Include a minimal code snippet and the full error output if applicable.
+    validations:
+      required: true

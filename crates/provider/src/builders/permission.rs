@@ -2,10 +2,10 @@
 
 use tronz_primitives::Address;
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::types::{
-    AccountPermissionUpdateContract, ContractType, Permission, TransactionRequest,
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    types::{AccountPermissionUpdateContract, ContractType, Permission, TransactionRequest},
 };
 
 /// Update an account's owner/witness/active permissions (multisig).

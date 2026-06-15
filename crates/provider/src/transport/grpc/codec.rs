@@ -3,30 +3,40 @@
 //! All functions are `pub(super)` — only the gRPC transport module needs them.
 
 use prost::Message as _;
-use tronz_primitives::{Address, Bytes, RecoverableSignature, Trx, TxId, B256};
+use tronz_primitives::{Address, B256, Bytes, RecoverableSignature, Trx, TxId};
 
-use crate::error::TransportError;
-use crate::proto;
-use crate::types::{
-    AccountInfo, AccountPermissions, AccountPermissionUpdateContract, AccountResource, AssetInfo,
-    BlockInfo, ConstantCallResult, ContractResult, CreateAccountContract, CreateSmartContract,
-    DelegatedResource, DelegatedResourceIndex, FreezeV2, Log, Permission, PermissionKey,
-    RawTransaction, SignedTransaction, SmartContractInfo, TransactionInfo,
-    TransferAssetContract, TransferContract, TriggerSmartContract, TxStatus, UnfreezeV2,
-    UpdateAccountContract, Vote, VoteWitnessContract, WitnessInfo,
+use crate::{
+    error::TransportError,
+    proto,
+    types::{
+        AccountInfo, AccountPermissionUpdateContract, AccountPermissions, AccountResource,
+        AssetInfo, AssetIssueContract, BlockInfo, ConstantCallResult, ContractResult,
+        CreateAccountContract, CreateSmartContract, DelegatedResource, DelegatedResourceIndex,
+        FreezeV2, Log, Permission, PermissionKey, RawTransaction, SignedTransaction,
+        SmartContractInfo, TransactionInfo, TransferAssetContract, TransferContract,
+        TriggerSmartContract, TxStatus, UnfreezeV2, UpdateAccountContract, Vote,
+        VoteWitnessContract, WitnessInfo,
+    },
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 fn addr(bytes: Vec<u8>) -> Result<Address, TransportError> {
-    Address::from_slice(&bytes)
-        .map_err(|e| TransportError::Malformed(format!("bad address: {e}")))
+    Address::from_slice(&bytes).map_err(|e| TransportError::Malformed(format!("bad address: {e}")))
 }
 
 fn opt_addr(bytes: Vec<u8>) -> Option<Address> {
-    if bytes.is_empty() { None } else { Address::from_slice(&bytes).ok() }
+    if bytes.is_empty() {
+        None
+    } else {
+        Address::from_slice(&bytes).ok()
+    }
 }
 
+/// Convert a byte vec to a B256. Returns `B256::ZERO` when the slice is not
+/// exactly 32 bytes.  Acceptable for log topics (wrong-length data from the
+/// node simply won't match any filter), but **not** for block hashes —
+/// see [`block_from_extention`] which validates the length explicitly.
 fn b256(bytes: Vec<u8>) -> B256 {
     if bytes.len() == 32 {
         let mut arr = [0u8; 32];
@@ -39,7 +49,9 @@ fn b256(bytes: Vec<u8>) -> B256 {
 
 // ── Block ─────────────────────────────────────────────────────────────────────
 
-pub(super) fn block_from_extention(ext: proto::BlockExtention) -> Result<BlockInfo, TransportError> {
+pub(super) fn block_from_extention(
+    ext: proto::BlockExtention,
+) -> Result<BlockInfo, TransportError> {
     let header = ext
         .block_header
         .ok_or_else(|| TransportError::Malformed("missing block_header".into()))?;
@@ -47,9 +59,19 @@ pub(super) fn block_from_extention(ext: proto::BlockExtention) -> Result<BlockIn
         .raw_data
         .ok_or_else(|| TransportError::Malformed("missing block_header.raw_data".into()))?;
 
+    // Block id must be exactly 32 bytes — a wrong length here would silently
+    // corrupt TAPOS (ref_block_hash becomes zero → node rejects the tx).
+    let blockid = ext.blockid;
+    if blockid.len() != 32 {
+        return Err(TransportError::Malformed(format!(
+            "blockid must be 32 bytes, got {}",
+            blockid.len()
+        )));
+    }
+
     Ok(BlockInfo {
         number: raw.number,
-        hash: b256(ext.blockid),
+        hash: b256(blockid),
         timestamp: raw.timestamp,
     })
 }
@@ -107,8 +129,12 @@ pub(super) fn account_from_proto(
         .collect();
 
     let permissions = AccountPermissions {
-        owner: a.owner_permission.and_then(|p| permission_from_proto(p).ok()),
-        witness: a.witness_permission.and_then(|p| permission_from_proto(p).ok()),
+        owner: a
+            .owner_permission
+            .and_then(|p| permission_from_proto(p).ok()),
+        witness: a
+            .witness_permission
+            .and_then(|p| permission_from_proto(p).ok()),
         actives: a
             .active_permission
             .into_iter()
@@ -134,7 +160,10 @@ fn permission_from_proto(p: proto::Permission) -> Result<Permission, TransportEr
         .keys
         .into_iter()
         .filter_map(|k| {
-            addr(k.address).ok().map(|a| PermissionKey { address: a, weight: k.weight })
+            addr(k.address).ok().map(|a| PermissionKey {
+                address: a,
+                weight: k.weight,
+            })
         })
         .collect();
     Ok(Permission {
@@ -153,15 +182,19 @@ pub(super) fn account_resource_from_proto(r: proto::AccountResourceMessage) -> A
         bandwidth_limit: r.net_limit,
         energy_used: r.energy_used,
         energy_limit: r.energy_limit,
-        tron_power_used: Trx::from_sun_unchecked(r.tron_power_used),
-        tron_power_limit: Trx::from_sun_unchecked(r.tron_power_limit),
+        // tronPowerUsed / tronPowerLimit are in TRX units (1 vote = 1 TRX),
+        // not sun — multiply by 1_000_000 to convert to the sun-based Trx type.
+        tron_power_used: Trx::from_sun_unchecked(r.tron_power_used * 1_000_000),
+        tron_power_limit: Trx::from_sun_unchecked(r.tron_power_limit * 1_000_000),
         ..Default::default()
     }
 }
 
 // ── Transaction ───────────────────────────────────────────────────────────────
 
-pub(super) fn signed_tx_from_proto(tx: proto::Transaction) -> Result<SignedTransaction, TransportError> {
+pub(super) fn signed_tx_from_proto(
+    tx: proto::Transaction,
+) -> Result<SignedTransaction, TransportError> {
     let (expiration, timestamp) = tx
         .raw_data
         .as_ref()
@@ -185,7 +218,12 @@ pub(super) fn signed_tx_from_proto(tx: proto::Transaction) -> Result<SignedTrans
         .collect();
 
     let raw_proto = tx.encode_to_vec();
-    let raw = RawTransaction::from_proto_extention(tx_id.as_slice().to_vec(), raw_proto, expiration, timestamp)?;
+    let raw = RawTransaction::from_proto_extention(
+        tx_id.as_slice().to_vec(),
+        raw_proto,
+        expiration,
+        timestamp,
+    )?;
 
     Ok(SignedTransaction { raw, signatures })
 }
@@ -208,7 +246,11 @@ pub(super) fn transaction_info_from_proto(
         TxId::from(bytes)
     };
 
-    let status = if info.result == 0 { TxStatus::Success } else { TxStatus::Failed };
+    let status = if info.result == 0 {
+        TxStatus::Success
+    } else {
+        TxStatus::Failed
+    };
 
     let receipt = info.receipt.unwrap_or_default();
     let contract_result = match receipt.result {
@@ -253,7 +295,9 @@ pub(super) fn transaction_info_from_proto(
 
 // ── Smart contract ─────────────────────────────────────────────────────────────
 
-pub(super) fn trigger_smart_contract_to_proto(p: TriggerSmartContract) -> proto::TriggerSmartContract {
+pub(super) fn trigger_smart_contract_to_proto(
+    p: TriggerSmartContract,
+) -> proto::TriggerSmartContract {
     proto::TriggerSmartContract {
         owner_address: p.owner_address.as_bytes().to_vec(),
         contract_address: p.contract_address.as_bytes().to_vec(),
@@ -285,14 +329,85 @@ pub(super) fn constant_result_from_extention(
         None
     };
 
-    Ok(ConstantCallResult { output, energy_used: ext.energy_used, revert_reason })
+    Ok(ConstantCallResult {
+        output,
+        energy_used: ext.energy_used,
+        revert_reason,
+    })
+}
+
+/// Convert a proto `SmartContract.ABI` to a JSON ABI byte array compatible
+/// with alloy's `JsonAbi` / EIP-712 tooling.
+fn abi_to_json(abi: proto::smart_contract::Abi) -> Vec<u8> {
+    fn state_mutability(v: i32) -> &'static str {
+        match v {
+            1 => "pure",
+            2 => "view",
+            4 => "payable",
+            _ => "nonpayable",
+        }
+    }
+
+    fn param_to_json(p: &proto::smart_contract::abi::entry::Param) -> serde_json::Value {
+        let mut obj = serde_json::json!({ "name": p.name, "type": p.r#type });
+        if p.indexed {
+            obj["indexed"] = serde_json::json!(true);
+        }
+        obj
+    }
+
+    let entries: Vec<serde_json::Value> = abi
+        .entrys
+        .into_iter()
+        .filter_map(|e| {
+            // EntryType: 0=Unknown, 1=Constructor, 2=Function, 3=Event,
+            //            4=Fallback, 5=Receive, 6=Error
+            let entry = match e.r#type {
+                1 => serde_json::json!({
+                    "type": "constructor",
+                    "inputs": e.inputs.iter().map(param_to_json).collect::<Vec<_>>(),
+                    "stateMutability": state_mutability(e.state_mutability),
+                }),
+                2 => serde_json::json!({
+                    "type": "function",
+                    "name": e.name,
+                    "inputs": e.inputs.iter().map(param_to_json).collect::<Vec<_>>(),
+                    "outputs": e.outputs.iter().map(param_to_json).collect::<Vec<_>>(),
+                    "stateMutability": state_mutability(e.state_mutability),
+                }),
+                3 => serde_json::json!({
+                    "type": "event",
+                    "name": e.name,
+                    "inputs": e.inputs.iter().map(param_to_json).collect::<Vec<_>>(),
+                    "anonymous": e.anonymous,
+                }),
+                4 => serde_json::json!({
+                    "type": "fallback",
+                    "stateMutability": state_mutability(e.state_mutability),
+                }),
+                5 => serde_json::json!({
+                    "type": "receive",
+                    "stateMutability": "payable",
+                }),
+                6 => serde_json::json!({
+                    "type": "error",
+                    "name": e.name,
+                    "inputs": e.inputs.iter().map(param_to_json).collect::<Vec<_>>(),
+                }),
+                _ => return None, // skip UnknownEntryType
+            };
+            Some(entry)
+        })
+        .collect();
+
+    serde_json::to_vec(&entries).unwrap_or_default()
 }
 
 pub(super) fn smart_contract_from_proto(c: proto::SmartContract) -> SmartContractInfo {
     SmartContractInfo {
         address: opt_addr(c.contract_address),
         origin_address: opt_addr(c.origin_address),
-        abi: c.abi.map(|a| format!("{a:?}").into_bytes()).unwrap_or_default(),
+        abi: c.abi.map(abi_to_json).unwrap_or_default(),
         bytecode: Bytes::from(c.bytecode),
         runtime_bytecode: None,
         name: c.name,
@@ -304,7 +419,10 @@ pub(super) fn smart_contract_from_proto(c: proto::SmartContract) -> SmartContrac
 pub(super) fn smart_contract_info_from_wrapper(
     w: proto::SmartContractDataWrapper,
 ) -> SmartContractInfo {
-    let mut info = w.smart_contract.map(smart_contract_from_proto).unwrap_or_default();
+    let mut info = w
+        .smart_contract
+        .map(smart_contract_from_proto)
+        .unwrap_or_default();
     if !w.runtimecode.is_empty() {
         info.runtime_bytecode = Some(Bytes::from(w.runtimecode));
     }
@@ -385,12 +503,41 @@ pub(super) fn account_permission_update_to_proto(
         proto_perm
     });
 
+    // The `operations` field is a 32-byte bitfield: bit N (byte N/8, bit N%8
+    // from LSB) represents ContractType N. Only set bits for types that actually
+    // exist in the proto enum; setting a bit for a non-existent type causes
+    // "X isn't a validate ContractType" from the node.
+    //
+    // Proto ContractType values (from Tron.proto Transaction.Contract.ContractType):
+    //   Byte 0: 0–6 valid, 7 missing → 0x7f
+    //   Byte 1: 8–15 all valid       → 0xff
+    //   Byte 2: 16–20 valid, 21–23 missing → 0x1f
+    //   Byte 3: 30–31 valid, 24–29 missing → 0xc0
+    //   Byte 4: 32–33 valid, 34–39 missing → 0x03
+    //   Byte 5: 41–46 valid, 40 & 47 missing → 0x7e
+    //   Byte 6: 48–49, 51–55 valid, 50 missing → 0xfb
+    //   Byte 7: 56–59 valid, 60+ missing → 0x0f
+    //   Bytes 8–31: no valid types → 0x00
+    const ACTIVE_OPERATIONS: [u8; 32] = {
+        let mut ops = [0u8; 32];
+        ops[0] = 0x7f;
+        ops[1] = 0xff;
+        ops[2] = 0x1f;
+        ops[3] = 0xc0;
+        ops[4] = 0x03;
+        ops[5] = 0x7e;
+        ops[6] = 0xfb;
+        ops[7] = 0x0f;
+        ops
+    };
+
     let actives = p
         .actives
         .into_iter()
         .map(|perm| {
             let mut proto_perm = permission_to_proto(perm);
             proto_perm.r#type = PermissionType::Active as i32;
+            proto_perm.operations = ACTIVE_OPERATIONS.to_vec();
             proto_perm
         })
         .collect();
@@ -425,6 +572,33 @@ pub(super) fn create_smart_contract_to_proto(p: CreateSmartContract) -> proto::C
 }
 
 // ── TRC10 ─────────────────────────────────────────────────────────────────────
+
+pub(super) fn asset_issue_to_proto(p: AssetIssueContract) -> proto::AssetIssueContract {
+    proto::AssetIssueContract {
+        owner_address: p.owner_address.as_bytes().to_vec(),
+        name: p.name.into_bytes(),
+        abbr: p.abbr.into_bytes(),
+        description: p.description.into_bytes(),
+        url: p.url.into_bytes(),
+        total_supply: p.total_supply,
+        precision: p.precision,
+        trx_num: p.trx_num,
+        num: p.num,
+        start_time: p.start_time,
+        end_time: p.end_time,
+        free_asset_net_limit: p.free_asset_net_limit,
+        public_free_asset_net_limit: p.public_free_asset_net_limit,
+        frozen_supply: p
+            .frozen_supply
+            .into_iter()
+            .map(|f| proto::asset_issue_contract::FrozenSupply {
+                frozen_amount: f.frozen_amount,
+                frozen_days: f.frozen_days,
+            })
+            .collect(),
+        ..Default::default()
+    }
+}
 
 pub(super) fn transfer_asset_to_proto(p: TransferAssetContract) -> proto::TransferAssetContract {
     proto::TransferAssetContract {

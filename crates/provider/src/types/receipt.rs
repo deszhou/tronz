@@ -1,6 +1,6 @@
 //! Transaction receipt / log types.
 
-use tronz_primitives::{Address, Bytes, Trx, TxId, B256};
+use tronz_primitives::{Address, B256, Bytes, Trx, TxId};
 
 /// Receipt returned after a transaction is confirmed on-chain.
 #[derive(Clone, Debug)]

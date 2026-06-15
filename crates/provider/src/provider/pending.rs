@@ -4,9 +4,11 @@ use core::time::Duration;
 
 use tronz_primitives::TxId;
 
-use crate::error::{Error, Result, TransportError};
-use crate::provider::TronProvider;
-use crate::types::TransactionInfo;
+use crate::{
+    error::{Error, Result, TransportError},
+    provider::TronProvider,
+    types::TransactionInfo,
+};
 
 /// Handle to a broadcast transaction; can be awaited to confirmation.
 ///

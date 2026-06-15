@@ -4,8 +4,7 @@
 //! 20-byte EVM-style address (`keccak256(pubkey)[12..]`). It is most commonly
 //! displayed in base58check form (the familiar `T...` string).
 
-use core::fmt;
-use core::str::FromStr;
+use core::{fmt, str::FromStr};
 
 use alloy_primitives::keccak256;
 use k256::ecdsa::VerifyingKey;
@@ -123,8 +122,8 @@ impl FromStr for Address {
     /// string is the right length for a 21-byte address.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let hexish = s.strip_prefix("0x").unwrap_or(s);
-        let looks_hex = hexish.len() == ADDRESS_LEN * 2
-            && hexish.bytes().all(|b| b.is_ascii_hexdigit());
+        let looks_hex =
+            hexish.len() == ADDRESS_LEN * 2 && hexish.bytes().all(|b| b.is_ascii_hexdigit());
         if looks_hex {
             Self::from_hex(s)
         } else {

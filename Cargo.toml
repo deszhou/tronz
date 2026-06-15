@@ -48,3 +48,4 @@ thiserror = { version = "2" }
 # misc
 tracing = { version = "0.1" }
 hex     = { version = "0.4" }
+rand    = { version = "0.8" }

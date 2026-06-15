@@ -6,12 +6,10 @@
 use core::future::Future;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use tronz_primitives::{Address, RecoverableSignature, Trx, B256};
+use tronz_primitives::{Address, B256, RecoverableSignature, Trx};
 use tronz_signer::{SignerError, TronSigner};
 
-use crate::error::Result;
-use crate::provider::TronProvider;
-use crate::types::TransactionRequest;
+use crate::{error::Result, provider::TronProvider, types::TransactionRequest};
 
 /// Whether a filler still has work to do for a given request.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -104,10 +102,11 @@ pub struct TaposFiller {
 }
 
 impl TaposFiller {
-    /// Default 60-second expiry.
+    /// Default 5-minute expiry. TRON blocks arrive every ~3 s, so 60 s (the
+    /// previous default) was too tight under moderate network congestion.
     pub fn new() -> Self {
         Self {
-            expiry: Duration::from_secs(60),
+            expiry: Duration::from_secs(300),
         }
     }
 
@@ -149,7 +148,7 @@ impl TxFiller for TaposFiller {
             tx.ref_block_hash = Some(block.ref_block_hash());
             let now_ms = unix_now_ms();
             tx.timestamp = Some(now_ms);
-            tx.expiration = Some(now_ms + expiry.as_millis() as i64);
+            tx.expiration = Some(now_ms + expiry.as_secs() as i64 * 1_000);
             Ok(tx)
         }
     }
@@ -227,6 +226,10 @@ impl HasSigner for Identity {
         None
     }
 
+    // Returns a trivially Send future; `async fn` syntax would require the
+    // trait to use `async fn` too, which conflicts with the explicit `+ Send`
+    // bound we need for multi-threaded executor compatibility.
+    #[allow(clippy::manual_async_fn)]
     fn sign(
         &self,
         _hash: B256,
@@ -240,6 +243,7 @@ impl HasSigner for TaposFiller {
         None
     }
 
+    #[allow(clippy::manual_async_fn)]
     fn sign(
         &self,
         _hash: B256,
@@ -253,6 +257,7 @@ impl HasSigner for FeeLimitFiller {
         None
     }
 
+    #[allow(clippy::manual_async_fn)]
     fn sign(
         &self,
         _hash: B256,
@@ -277,7 +282,9 @@ impl<S: TronSigner> HasSigner for SignerFiller<S> {
 
 impl<L: HasSigner + Clone + Send, R: HasSigner + Clone + Send> HasSigner for JoinFill<L, R> {
     fn signer_address(&self) -> Option<Address> {
-        self.right.signer_address().or_else(|| self.left.signer_address())
+        self.right
+            .signer_address()
+            .or_else(|| self.left.signer_address())
     }
 
     fn sign(
@@ -299,6 +306,7 @@ impl<L: HasSigner + Clone + Send, R: HasSigner + Clone + Send> HasSigner for Joi
 fn unix_now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_millis() as i64)
+        .ok()
+        .and_then(|d| i64::try_from(d.as_millis()).ok())
         .unwrap_or(0)
 }

@@ -12,12 +12,10 @@ pub mod trc20;
 
 /// Event log decoding helpers for TRON smart contracts.
 pub mod event;
-#[cfg(feature = "provider")]
-pub use event::{decode_log, decode_logs, log_matches, topic0_set};
-
 /// Re-exported alloy ABI types for use with generated calls.
 pub use alloy_sol_types::{SolCall, SolError, SolEvent, SolInterface, SolValue};
-
+#[cfg(feature = "provider")]
+pub use event::{decode_log, decode_logs, log_matches, topic0_set};
 pub use tronz_primitives::{Address, Bytes, U256};
 
 #[cfg(feature = "provider")]
@@ -28,9 +26,9 @@ pub use error::{ContractError, Result};
 #[cfg(feature = "provider")]
 mod interface;
 #[cfg(feature = "provider")]
-pub use interface::Interface;
-#[cfg(feature = "provider")]
 pub use alloy_dyn_abi::DecodedEvent;
+#[cfg(feature = "provider")]
+pub use interface::Interface;
 
 #[cfg(feature = "provider")]
 mod instance;
@@ -46,6 +44,5 @@ pub use call::CallBuilder;
 mod deploy;
 #[cfg(feature = "provider")]
 pub use deploy::DeployBuilder;
-
 #[cfg(feature = "provider")]
 pub use trc20::{Trc20Error, Trc20Ext, Trc20Instance};

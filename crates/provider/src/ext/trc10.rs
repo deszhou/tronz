@@ -8,7 +8,10 @@ use crate::{
     error::{Error, Result},
     provider::{PendingTransaction, TronProvider},
     transport::TronTransport as _,
-    types::{AssetInfo, ContractType, TransactionRequest, TransferAssetContract},
+    types::{
+        AssetInfo, AssetIssueContract, ContractType, FrozenSupply, TransactionRequest,
+        TransferAssetContract,
+    },
 };
 
 /// TRC10 native token methods, available on any [`TronProvider`].
@@ -71,6 +74,27 @@ pub trait Trc10Api: TronProvider + Sized {
 
     /// Start building a TRC10 token transfer.
     fn transfer_trc10(&self) -> TransferTrc10Builder<'_, Self>;
+
+    /// Start building a TRC10 token issuance.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use tronz_provider::ext::Trc10Api;
+    /// # async fn run(provider: impl tronz_provider::TronProvider) -> tronz_provider::Result<()> {
+    /// let pending = provider
+    ///     .issue_trc10()
+    ///     .name("MyToken")
+    ///     .abbr("MTK")
+    ///     .description("A test token")
+    ///     .url("https://example.com")
+    ///     .total_supply(1_000_000_000)
+    ///     .precision(6)
+    ///     .send()
+    ///     .await?;
+    /// # Ok(()) }
+    /// ```
+    fn issue_trc10(&self) -> IssueTrc10Builder<'_, Self>;
 }
 
 impl<P: TronProvider> Trc10Api for P {
@@ -103,6 +127,10 @@ impl<P: TronProvider> Trc10Api for P {
     fn transfer_trc10(&self) -> TransferTrc10Builder<'_, Self> {
         TransferTrc10Builder::new(self)
     }
+
+    fn issue_trc10(&self) -> IssueTrc10Builder<'_, Self> {
+        IssueTrc10Builder::new(self)
+    }
 }
 
 // ── Builder ───────────────────────────────────────────────────────────────────
@@ -121,7 +149,14 @@ pub struct TransferTrc10Builder<'a, P> {
 
 impl<'a, P: TronProvider> TransferTrc10Builder<'a, P> {
     pub(crate) fn new(provider: &'a P) -> Self {
-        Self { provider, owner: None, to: None, token_id: None, amount: None, memo: None }
+        Self {
+            provider,
+            owner: None,
+            to: None,
+            token_id: None,
+            amount: None,
+            memo: None,
+        }
     }
 
     /// Override the sender (defaults to the provider's signer address).
@@ -172,6 +207,178 @@ impl<'a, P: TronProvider> TransferTrc10Builder<'a, P> {
                 amount,
             })),
             memo: self.memo,
+            ..Default::default()
+        };
+        self.provider.send_transaction(req).await
+    }
+}
+
+// ── IssueTrc10Builder ─────────────────────────────────────────────────────────
+
+/// Builds a TRC10 token issuance transaction.
+///
+/// Created by [`Trc10Api::issue_trc10`].
+pub struct IssueTrc10Builder<'a, P> {
+    provider: &'a P,
+    owner: Option<tronz_primitives::Address>,
+    name: Option<String>,
+    abbr: Option<String>,
+    description: String,
+    url: Option<String>,
+    total_supply: Option<i64>,
+    precision: i32,
+    trx_num: i32,
+    num: i32,
+    /// ICO start offset from now in milliseconds (default: 5 minutes).
+    start_offset_ms: i64,
+    /// ICO duration in milliseconds after start (default: 30 days).
+    duration_ms: i64,
+    free_asset_net_limit: i64,
+    public_free_asset_net_limit: i64,
+    frozen_supply: Vec<FrozenSupply>,
+}
+
+impl<'a, P: TronProvider> IssueTrc10Builder<'a, P> {
+    pub(crate) fn new(provider: &'a P) -> Self {
+        Self {
+            provider,
+            owner: None,
+            name: None,
+            abbr: None,
+            description: String::new(),
+            url: None,
+            total_supply: None,
+            precision: 0,
+            trx_num: 1,
+            num: 1,
+            start_offset_ms: 5 * 60 * 1_000,       // 5 minutes from now
+            duration_ms: 30 * 24 * 60 * 60 * 1_000, // 30 days
+            free_asset_net_limit: 0,
+            public_free_asset_net_limit: 0,
+            frozen_supply: vec![],
+        }
+    }
+
+    /// Override the issuer address (defaults to the provider's signer address).
+    pub fn owner(mut self, owner: tronz_primitives::Address) -> Self {
+        self.owner = Some(owner);
+        self
+    }
+
+    /// Set the full token name (required).
+    pub fn name(mut self, name: impl Into<String>) -> Self {
+        self.name = Some(name.into());
+        self
+    }
+
+    /// Set the token abbreviation / symbol (required).
+    pub fn abbr(mut self, abbr: impl Into<String>) -> Self {
+        self.abbr = Some(abbr.into());
+        self
+    }
+
+    /// Set a human-readable description.
+    pub fn description(mut self, desc: impl Into<String>) -> Self {
+        self.description = desc.into();
+        self
+    }
+
+    /// Set the project URL (required).
+    pub fn url(mut self, url: impl Into<String>) -> Self {
+        self.url = Some(url.into());
+        self
+    }
+
+    /// Set the total supply in the token's smallest unit (required).
+    pub fn total_supply(mut self, supply: i64) -> Self {
+        self.total_supply = Some(supply);
+        self
+    }
+
+    /// Set the decimal precision (0–6, default: 0).
+    pub fn precision(mut self, precision: i32) -> Self {
+        self.precision = precision;
+        self
+    }
+
+    /// Set the ICO exchange rate as `trx_num` TRX units per `num` tokens.
+    ///
+    /// Defaults to `1:1` (1 TRX = 1 token). Pass `trx_num=1, num=1000` for
+    /// 1 TRX = 1000 tokens.
+    pub fn exchange_rate(mut self, trx_num: i32, num: i32) -> Self {
+        self.trx_num = trx_num;
+        self.num = num;
+        self
+    }
+
+    /// Set how far in the future the ICO starts (default: 5 minutes).
+    pub fn start_offset_ms(mut self, ms: i64) -> Self {
+        self.start_offset_ms = ms;
+        self
+    }
+
+    /// Set the ICO duration in milliseconds after the start (default: 30 days).
+    pub fn duration_ms(mut self, ms: i64) -> Self {
+        self.duration_ms = ms;
+        self
+    }
+
+    /// Free bandwidth limit per account for token transfers.
+    pub fn free_asset_net_limit(mut self, limit: i64) -> Self {
+        self.free_asset_net_limit = limit;
+        self
+    }
+
+    /// Total free bandwidth limit across all token transfers.
+    pub fn public_free_asset_net_limit(mut self, limit: i64) -> Self {
+        self.public_free_asset_net_limit = limit;
+        self
+    }
+
+    /// Lock a portion of the supply for `days` days.
+    pub fn freeze(mut self, amount: i64, days: i64) -> Self {
+        self.frozen_supply.push(FrozenSupply {
+            frozen_amount: amount,
+            frozen_days: days,
+        });
+        self
+    }
+
+    /// Build, sign, and broadcast the token issuance.
+    pub async fn send(self) -> Result<PendingTransaction<P>> {
+        let owner = self
+            .owner
+            .or_else(|| self.provider.signer_address())
+            .ok_or(Error::NoSigner)?;
+        let name = self.name.ok_or(Error::MissingField("name"))?;
+        let abbr = self.abbr.ok_or(Error::MissingField("abbr"))?;
+        let url = self.url.ok_or(Error::MissingField("url"))?;
+        let total_supply = self.total_supply.ok_or(Error::MissingField("total_supply"))?;
+
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as i64)
+            .unwrap_or(0);
+        let start_time = now_ms + self.start_offset_ms;
+        let end_time = start_time + self.duration_ms;
+
+        let req = TransactionRequest {
+            contract: Some(ContractType::AssetIssue(AssetIssueContract {
+                owner_address: owner,
+                name,
+                abbr,
+                description: self.description,
+                url,
+                total_supply,
+                precision: self.precision,
+                trx_num: self.trx_num,
+                num: self.num,
+                start_time,
+                end_time,
+                free_asset_net_limit: self.free_asset_net_limit,
+                public_free_asset_net_limit: self.public_free_asset_net_limit,
+                frozen_supply: self.frozen_supply,
+            })),
             ..Default::default()
         };
         self.provider.send_transaction(req).await

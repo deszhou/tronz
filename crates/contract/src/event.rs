@@ -29,9 +29,7 @@
 
 #[cfg(feature = "provider")]
 use {
-    alloy_sol_types::SolEvent,
-    crate::error::Result,
-    tronz_primitives::B256,
+    crate::error::Result, alloy_sol_types::SolEvent, tronz_primitives::B256,
     tronz_provider::types::Log,
 };
 
@@ -62,7 +60,9 @@ pub fn log_matches<E: SolEvent>(log: &Log) -> bool {
 /// Logs that match but fail to decode yield an `Err`.
 #[cfg(feature = "provider")]
 pub fn decode_logs<'a, E: SolEvent + 'a>(logs: &'a [Log]) -> impl Iterator<Item = Result<E>> + 'a {
-    logs.iter().filter(|log| log_matches::<E>(log)).map(decode_log::<E>)
+    logs.iter()
+        .filter(|log| log_matches::<E>(log))
+        .map(decode_log::<E>)
 }
 
 /// Return all topic-0 hashes present in the log slice (deduplicated).
@@ -71,7 +71,6 @@ pub fn decode_logs<'a, E: SolEvent + 'a>(logs: &'a [Log]) -> impl Iterator<Item 
 #[cfg(feature = "provider")]
 pub fn topic0_set(logs: &[Log]) -> impl Iterator<Item = B256> + '_ {
     let mut seen = std::collections::HashSet::new();
-    logs.iter().filter_map(move |log| {
-        log.topics.first().copied().filter(|t| seen.insert(*t))
-    })
+    logs.iter()
+        .filter_map(move |log| log.topics.first().copied().filter(|t| seen.insert(*t)))
 }

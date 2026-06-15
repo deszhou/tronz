@@ -2,9 +2,11 @@
 
 use tronz_primitives::{Address, Trx};
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::types::{ContractType, TransactionRequest, TransferContract};
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    types::{ContractType, TransactionRequest, TransferContract},
+};
 
 /// Builds a TRX transfer (`send_trx`).
 pub struct TransferBuilder<'a, P> {

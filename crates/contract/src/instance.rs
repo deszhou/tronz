@@ -6,12 +6,7 @@ use alloy_primitives::Selector;
 use tronz_primitives::{Address, Bytes};
 use tronz_provider::TronProvider;
 
-use crate::{
-    call::CallBuilder,
-    deploy::DeployBuilder,
-    error::Result,
-    interface::Interface,
-};
+use crate::{call::CallBuilder, deploy::DeployBuilder, error::Result, interface::Interface};
 
 /// A handle to a TRON smart contract at a specific address.
 ///
@@ -33,7 +28,11 @@ impl<P> ContractInstance<P> {
     /// Create a contract instance with a dynamic ABI [`Interface`].
     #[inline]
     pub fn new(address: Address, provider: P, interface: Interface) -> Self {
-        Self { address, provider, interface }
+        Self {
+            address,
+            provider,
+            interface,
+        }
     }
 
     /// The contract address.
@@ -85,7 +84,9 @@ impl<P> std::ops::Deref for ContractInstance<P> {
 
 impl<P> std::fmt::Debug for ContractInstance<P> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ContractInstance").field("address", &self.address).finish()
+        f.debug_struct("ContractInstance")
+            .field("address", &self.address)
+            .finish()
     }
 }
 
@@ -97,7 +98,11 @@ impl<P: TronProvider> ContractInstance<P> {
     /// [`Trc20Instance`]: crate::trc20::Trc20Instance
     #[inline]
     pub fn new_raw(provider: P, address: Address) -> Self {
-        Self { address, provider, interface: Interface::empty() }
+        Self {
+            address,
+            provider,
+            interface: Interface::empty(),
+        }
     }
 
     // ── raw calldata ──────────────────────────────────────────────────────────
@@ -116,11 +121,7 @@ impl<P: TronProvider> ContractInstance<P> {
     /// Create a [`CallBuilder`] for the function named `fn_name` with `args`.
     ///
     /// Returns an error if the function is not found in the ABI.
-    pub fn function(
-        &self,
-        fn_name: &str,
-        args: &[DynSolValue],
-    ) -> Result<CallBuilder<P>> {
+    pub fn function(&self, fn_name: &str, args: &[DynSolValue]) -> Result<CallBuilder<P>> {
         let data = self.encode_input(fn_name, args)?;
         Ok(CallBuilder::new(self.provider.clone(), self.address, data))
     }
@@ -140,11 +141,7 @@ impl<P: TronProvider> ContractInstance<P> {
     // ── convenience (dynamic call + immediate decode) ─────────────────────────
 
     /// Simulate a call by function name and return decoded output values.
-    pub async fn call(
-        &self,
-        fn_name: &str,
-        args: &[DynSolValue],
-    ) -> Result<Vec<DynSolValue>> {
+    pub async fn call(&self, fn_name: &str, args: &[DynSolValue]) -> Result<Vec<DynSolValue>> {
         let output = self.function(fn_name, args)?.call().await?;
         self.decode_output(fn_name, &output)
     }

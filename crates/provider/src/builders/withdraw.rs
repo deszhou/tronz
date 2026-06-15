@@ -2,10 +2,13 @@
 
 use tronz_primitives::Address;
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::types::{
-    CancelAllUnfreezeV2Contract, ContractType, TransactionRequest, WithdrawExpireUnfreezeContract,
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    types::{
+        CancelAllUnfreezeV2Contract, ContractType, TransactionRequest,
+        WithdrawExpireUnfreezeContract,
+    },
 };
 
 /// Claim TRX from expired unfreeze windows.

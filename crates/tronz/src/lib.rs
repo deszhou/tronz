@@ -6,12 +6,11 @@
 
 /* --------------------------------- Primitives --------------------------------- */
 
+#[doc(no_inline)]
+pub use primitives::{Address, Trx, U256};
 /// Core TRON primitives: addresses, amounts, resource codes, signatures.
 #[doc(inline)]
 pub use tronz_primitives as primitives;
-
-#[doc(no_inline)]
-pub use primitives::{Address, Trx, U256};
 
 /* ---------------------------------- Signers ----------------------------------- */
 

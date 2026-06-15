@@ -14,10 +14,11 @@ mod error;
 pub use error::{Error, Result, TransportError};
 
 mod provider;
-pub use provider::{FilledProvider, PendingTransaction, ProviderBuilder, RootProvider, TronProvider};
-
 pub use ext::Trc10Api;
 pub use fillers::HasSigner;
+pub use provider::{
+    FilledProvider, PendingTransaction, ProviderBuilder, RootProvider, TronProvider,
+};
 pub use transport::TronTransport;
 
 // Private: prost-generated code + codec conversions never leak publicly.

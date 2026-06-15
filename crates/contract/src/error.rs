@@ -74,14 +74,16 @@ impl ContractError {
     /// # }
     /// ```
     pub fn as_decoded_error<E: SolError>(&self) -> Option<E> {
-        self.as_revert_data().and_then(|data| E::abi_decode(data).ok())
+        self.as_revert_data()
+            .and_then(|data| E::abi_decode(data).ok())
     }
 
     /// Attempt to ABI-decode the revert data into one of the custom errors in a [`SolInterface`].
     ///
     /// Returns `None` if the error is not a revert, or if decoding fails.
     pub fn as_decoded_interface_error<I: SolInterface>(&self) -> Option<I> {
-        self.as_revert_data().and_then(|data| I::abi_decode(data).ok())
+        self.as_revert_data()
+            .and_then(|data| I::abi_decode(data).ok())
     }
 
     /// Build a [`ContractError`] from a failed output decode.

@@ -7,13 +7,11 @@
 #[cfg(feature = "provider")]
 pub mod instance;
 
+use alloy_sol_macro::sol;
+use alloy_sol_types::SolCall;
 #[cfg(feature = "provider")]
 pub use instance::{Trc20Error, Trc20Ext, Trc20Instance};
-
-use alloy_sol_types::SolCall;
 use tronz_primitives::{Address, Bytes, U256};
-
-use alloy_sol_macro::sol;
 
 sol! {
     #[derive(Debug, PartialEq, Eq)]
@@ -106,8 +104,9 @@ pub fn selector<C: SolCall>() -> [u8; 4] {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use alloy_sol_types::SolValue;
+
+    use super::*;
 
     const ADDR: &str = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
 

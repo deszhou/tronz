@@ -2,10 +2,10 @@
 
 use tronz_primitives::{Address, ResourceCode, Trx};
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::types::{
-    ContractType, FreezeBalanceV2Contract, TransactionRequest, UnfreezeBalanceV2Contract,
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    types::{ContractType, FreezeBalanceV2Contract, TransactionRequest, UnfreezeBalanceV2Contract},
 };
 
 /// Stake TRX to obtain energy or bandwidth (`FreezeBalanceV2`).

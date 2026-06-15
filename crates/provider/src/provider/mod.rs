@@ -4,26 +4,27 @@ pub mod builder;
 pub mod pending;
 pub mod root;
 
-pub use builder::{FilledProvider, ProviderBuilder};
-pub use pending::PendingTransaction;
-pub use root::RootProvider;
-
 use core::future::Future;
 use std::collections::HashMap;
 
+pub use builder::{FilledProvider, ProviderBuilder};
+pub use pending::PendingTransaction;
+pub use root::RootProvider;
 use tronz_primitives::{Address, ResourceCode, Trx, TxId};
 
-use crate::builders::{
-    AccountPermissionUpdateBuilder, CancelAllUnfreezeBuilder, CreateAccountBuilder,
-    DelegateBuilder, FreezeBuilder, TransferBuilder, UndelegateBuilder, UnfreezeBuilder,
-    UpdateAccountBuilder, VoteBuilder, WithdrawBalanceBuilder, WithdrawExpireBuilder,
-};
-use crate::error::Result;
-use crate::transport::TronTransport;
-use crate::types::{
-    AccountInfo, AccountResource, BlockInfo, DelegatedResource, DelegatedResourceIndex,
-    SignedTransaction, SmartContractInfo, TransactionInfo, TransactionRequest, TriggerSmartContract,
-    WitnessInfo,
+use crate::{
+    builders::{
+        AccountPermissionUpdateBuilder, CancelAllUnfreezeBuilder, CreateAccountBuilder,
+        DelegateBuilder, FreezeBuilder, TransferBuilder, UndelegateBuilder, UnfreezeBuilder,
+        UpdateAccountBuilder, VoteBuilder, WithdrawBalanceBuilder, WithdrawExpireBuilder,
+    },
+    error::Result,
+    transport::TronTransport,
+    types::{
+        AccountInfo, AccountResource, BlockInfo, DelegatedResource, DelegatedResourceIndex,
+        SignedTransaction, SmartContractInfo, TransactionInfo, TransactionRequest,
+        TriggerSmartContract, WitnessInfo,
+    },
 };
 
 /// The primary user-facing interface: reads, lazy operation builders, and

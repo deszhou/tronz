@@ -2,10 +2,12 @@
 
 use tronz_primitives::{Address, ResourceCode, Trx};
 
-use crate::error::{Error, Result};
-use crate::provider::{PendingTransaction, TronProvider};
-use crate::types::{
-    ContractType, DelegateResourceContract, TransactionRequest, UnDelegateResourceContract,
+use crate::{
+    error::{Error, Result},
+    provider::{PendingTransaction, TronProvider},
+    types::{
+        ContractType, DelegateResourceContract, TransactionRequest, UnDelegateResourceContract,
+    },
 };
 
 /// Delegate staked energy or bandwidth to another account.
@@ -139,12 +141,14 @@ impl<'a, P: TronProvider> UndelegateBuilder<'a, P> {
         let amount = self.amount.ok_or(Error::MissingField("amount"))?;
 
         let req = TransactionRequest {
-            contract: Some(ContractType::UnDelegateResource(UnDelegateResourceContract {
-                owner_address: owner,
-                resource: self.resource,
-                balance: amount,
-                receiver_address: from,
-            })),
+            contract: Some(ContractType::UnDelegateResource(
+                UnDelegateResourceContract {
+                    owner_address: owner,
+                    resource: self.resource,
+                    balance: amount,
+                    receiver_address: from,
+                },
+            )),
             ..Default::default()
         };
         self.provider.send_transaction(req).await

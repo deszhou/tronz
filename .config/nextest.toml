@@ -1,0 +1,5 @@
+[profile.default]
+# Retry flaky tests with exponential backoff (e.g. transient gRPC errors in
+# integration tests when run locally with --include-ignored).
+retries = { backoff = "exponential", count = 2, delay = "2s", jitter = true }
+slow-timeout = { period = "30s", terminate-after = 3 }

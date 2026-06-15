@@ -7,17 +7,17 @@ use std::collections::HashMap;
 use tronz_primitives::{Address, ResourceCode, Trx, TxId};
 use tronz_signer::TronSigner;
 
-use crate::error::{Error, Result};
-use crate::fillers::{FeeLimitFiller, HasSigner, Identity, JoinFill, SignerFiller, TaposFiller, TxFiller};
-use crate::provider::{PendingTransaction, RootProvider, TronProvider};
-use crate::transport::TronTransport;
-use crate::transport::grpc::GrpcTransport;
-use crate::types::{
-    AccountInfo, AccountResource, BlockInfo, ContractType, DelegatedResource,
-    DelegatedResourceIndex, SignedTransaction, SmartContractInfo, TransactionInfo,
-    TransactionRequest, TriggerSmartContract, WitnessInfo,
+use crate::{
+    error::{Error, Result},
+    fillers::{FeeLimitFiller, HasSigner, Identity, JoinFill, SignerFiller, TaposFiller, TxFiller},
+    provider::{PendingTransaction, RootProvider, TronProvider},
+    transport::{TronTransport, grpc::GrpcTransport},
+    types::{
+        AccountInfo, AccountResource, BlockInfo, ContractType, DelegatedResource,
+        DelegatedResourceIndex, SignedTransaction, SmartContractInfo, TransactionInfo,
+        TransactionRequest, TriggerSmartContract, WitnessInfo,
+    },
 };
-
 
 /// Accumulates fillers and finally binds a transport to produce a
 /// [`FilledProvider`].
@@ -29,7 +29,10 @@ pub struct ProviderBuilder<F> {
 impl ProviderBuilder<Identity> {
     /// Start with no fillers.
     pub fn new() -> Self {
-        Self { filler: Identity, api_key: None }
+        Self {
+            filler: Identity,
+            api_key: None,
+        }
     }
 }
 
@@ -67,7 +70,8 @@ impl<F: TxFiller> ProviderBuilder<F> {
     pub fn with_recommended_fillers(
         self,
     ) -> ProviderBuilder<JoinFill<JoinFill<F, TaposFiller>, FeeLimitFiller>> {
-        self.with_tapos().with_fee_limit(Trx::from_sun_unchecked(20_000_000))
+        self.with_tapos()
+            .with_fee_limit(Trx::from_sun_unchecked(20_000_000))
     }
 
     /// Add the TAPOS filler (required before broadcasting client-built txs).
@@ -103,15 +107,17 @@ impl<F: TxFiller> ProviderBuilder<F> {
     /// `uri` examples:
     /// - `"https://grpc.trongrid.io:443"` (TronGrid mainnet, TLS)
     /// - `"http://127.0.0.1:50051"` (local node, plain HTTP/2)
-    pub async fn on_grpc(
-        self,
-        uri: impl AsRef<str>,
-    ) -> Result<FilledProvider<GrpcTransport, F>> {
-        let mut transport = GrpcTransport::connect(uri).await.map_err(Error::Transport)?;
+    pub async fn on_grpc(self, uri: impl AsRef<str>) -> Result<FilledProvider<GrpcTransport, F>> {
+        let mut transport = GrpcTransport::connect(uri)
+            .await
+            .map_err(Error::Transport)?;
         if let Some(key) = self.api_key {
             transport = transport.with_api_key(key);
         }
-        Ok(FilledProvider::new(RootProvider::new(transport), self.filler))
+        Ok(FilledProvider::new(
+            RootProvider::new(transport),
+            self.filler,
+        ))
     }
 
     /// Connect with an explicit TronGrid API key.
@@ -212,11 +218,7 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         self.inner.get_delegated_resource_index(address).await
     }
 
-    async fn get_can_delegate_max(
-        &self,
-        address: Address,
-        resource: ResourceCode,
-    ) -> Result<Trx> {
+    async fn get_can_delegate_max(&self, address: Address, resource: ResourceCode) -> Result<Trx> {
         self.inner.get_can_delegate_max(address, resource).await
     }
 
@@ -236,13 +238,14 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         self.inner.list_witnesses().await
     }
 
-
     async fn get_can_withdraw_unfreeze_amount(
         &self,
         address: Address,
         timestamp_ms: i64,
     ) -> Result<Trx> {
-        self.inner.get_can_withdraw_unfreeze_amount(address, timestamp_ms).await
+        self.inner
+            .get_can_withdraw_unfreeze_amount(address, timestamp_ms)
+            .await
     }
 
     async fn get_available_unfreeze_count(&self, address: Address) -> Result<i64> {
@@ -255,10 +258,7 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
 
     // ── send_transaction ─────────────────────────────────────────────────────
 
-    async fn send_transaction(
-        &self,
-        req: TransactionRequest,
-    ) -> Result<PendingTransaction<Self>> {
+    async fn send_transaction(&self, req: TransactionRequest) -> Result<PendingTransaction<Self>> {
         // ── 1. Fill (sync then async) ────────────────────────────────────────
         let filler = self.filler.clone();
         let mut req = req;
@@ -271,66 +271,70 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         let transport = self.inner.transport();
 
         let mut raw = match contract {
-            ContractType::Transfer(c) => {
-                transport.transfer_trx(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::TriggerSmartContract(c) => {
-                transport.trigger_smart_contract(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::FreezeBalanceV2(c) => {
-                transport.freeze_balance_v2(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::UnfreezeBalanceV2(c) => {
-                transport.unfreeze_balance_v2(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::DelegateResource(c) => {
-                transport.delegate_resource(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::UnDelegateResource(c) => {
-                transport.undelegate_resource(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::WithdrawExpireUnfreeze(c) => {
-                transport
-                    .withdraw_expire_unfreeze(c)
-                    .await
-                    .map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::CancelAllUnfreezeV2(c) => {
-                transport
-                    .cancel_all_unfreeze_v2(c)
-                    .await
-                    .map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::WithdrawBalance(c) => {
-                transport.withdraw_balance(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::AccountPermissionUpdate(c) => {
-                transport
-                    .account_permission_update(c)
-                    .await
-                    .map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::CreateSmartContract(c) => {
-                transport
-                    .create_smart_contract(c)
-                    .await
-                    .map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::TransferAsset(c) => {
-                transport.transfer_asset(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::CreateAccount(c) => {
-                transport.create_account(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::VoteWitness(c) => {
-                transport
-                    .vote_witness_account(c)
-                    .await
-                    .map_err(|e| Error::Transport(e.into()))?
-            }
-            ContractType::UpdateAccount(c) => {
-                transport.update_account(c).await.map_err(|e| Error::Transport(e.into()))?
-            }
+            ContractType::Transfer(c) => transport
+                .transfer_trx(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::TriggerSmartContract(c) => transport
+                .trigger_smart_contract(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::FreezeBalanceV2(c) => transport
+                .freeze_balance_v2(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UnfreezeBalanceV2(c) => transport
+                .unfreeze_balance_v2(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::DelegateResource(c) => transport
+                .delegate_resource(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UnDelegateResource(c) => transport
+                .undelegate_resource(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::WithdrawExpireUnfreeze(c) => transport
+                .withdraw_expire_unfreeze(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::CancelAllUnfreezeV2(c) => transport
+                .cancel_all_unfreeze_v2(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::WithdrawBalance(c) => transport
+                .withdraw_balance(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::AccountPermissionUpdate(c) => transport
+                .account_permission_update(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::CreateSmartContract(c) => transport
+                .create_smart_contract(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::AssetIssue(c) => transport
+                .create_asset_issue(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::TransferAsset(c) => transport
+                .transfer_asset(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::CreateAccount(c) => transport
+                .create_account(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::VoteWitness(c) => transport
+                .vote_witness_account(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UpdateAccount(c) => transport
+                .update_account(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
         };
 
         // ── 3. Apply fee_limit / memo / permission_id ────────────────────────
@@ -344,14 +348,17 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         // ── 4. Sign ──────────────────────────────────────────────────────────
         let sig = self
             .filler
-            .sign(raw.tx_id().into())
+            .sign(raw.tx_id())
             .await
             .ok_or(Error::NoSigner)?
             .map_err(Error::Signer)?;
 
         // ── 5. Broadcast ─────────────────────────────────────────────────────
         let tx_id = raw.tx_id();
-        let signed = SignedTransaction { raw, signatures: vec![sig] };
+        let signed = SignedTransaction {
+            raw,
+            signatures: vec![sig],
+        };
         transport
             .broadcast_transaction(&signed)
             .await

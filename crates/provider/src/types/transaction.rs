@@ -72,7 +72,6 @@ pub struct RawTransaction {
     pub timestamp: i64,
 
     // --- internal transport fields ---
-
     /// `sha256(prost_encode(Transaction.raw))` — the exact bytes to sign.
     pub(crate) tx_id: TxId,
     /// Prost-encoded `Transaction` (no signatures yet). Used to build the
@@ -142,7 +141,7 @@ impl RawTransaction {
             }
 
             // Recompute tx_id = sha256(encoded raw_data)
-            let new_tx_id_bytes: [u8; 32] = Sha256::digest(&raw_data.encode_to_vec()).into();
+            let new_tx_id_bytes: [u8; 32] = Sha256::digest(raw_data.encode_to_vec()).into();
             self.tx_id = TxId::from(new_tx_id_bytes);
         } else {
             return Err(crate::error::TransportError::Malformed(

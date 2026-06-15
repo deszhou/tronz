@@ -87,22 +87,26 @@ impl RecoverableSignature {
         rs[..32].copy_from_slice(&self.r);
         rs[32..].copy_from_slice(&self.s);
         let sig = Signature::from_slice(&rs)?;
-        let recid =
-            RecoveryId::from_byte(self.v).ok_or(SignatureError::BadRecoveryId(self.v))?;
+        let recid = RecoveryId::from_byte(self.v).ok_or(SignatureError::BadRecoveryId(self.v))?;
         Ok((sig, recid))
     }
 }
 
 impl fmt::Debug for RecoverableSignature {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "RecoverableSignature(0x{})", hex::encode(self.to_bytes()))
+        write!(
+            f,
+            "RecoverableSignature(0x{})",
+            hex::encode(self.to_bytes())
+        )
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use k256::ecdsa::{SigningKey, signature::hazmat::PrehashSigner};
+
     use super::*;
-    use k256::ecdsa::{signature::hazmat::PrehashSigner, SigningKey};
 
     #[test]
     fn bytes_roundtrip() {
@@ -138,8 +142,7 @@ mod tests {
     #[test]
     fn from_signature_and_split() {
         let signing = SigningKey::from_bytes(&[1u8; 32].into()).unwrap();
-        let (sig, recid): (Signature, RecoveryId) =
-            signing.sign_prehash(&[9u8; 32]).unwrap();
+        let (sig, recid): (Signature, RecoveryId) = signing.sign_prehash(&[9u8; 32]).unwrap();
         let rec = RecoverableSignature::from_signature(&sig, recid);
         let (sig2, recid2) = rec.split().unwrap();
         assert_eq!(sig, sig2);

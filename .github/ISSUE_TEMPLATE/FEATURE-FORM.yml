@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a feature or improvement
+labels: ["enhancement"]
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please check that the feature hasn't already been requested in the issue tracker.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which crate or area does the feature relate to?
+      multiple: true
+      options:
+        - tronz (umbrella)
+        - tronz-primitives
+        - tronz-signer
+        - tronz-provider (transport / gRPC)
+        - tronz-provider (provider / fillers / builders)
+        - tronz-contract (TRC20 / TRC721)
+        - examples
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the feature
+      description: |
+        What would you like tronz to do? Describe the problem it solves, how
+        you'd expect to use it, and any API sketch you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Links to TRON documentation, related issues, or prior art (alloy, ethers-rs, etc.)

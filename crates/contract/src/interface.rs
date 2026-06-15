@@ -8,8 +8,10 @@ use alloy_primitives::{B256, Selector};
 use tronz_primitives::{Address, Bytes};
 use tronz_provider::types::Log;
 
-use crate::error::{ContractError, Result};
-use crate::instance::ContractInstance;
+use crate::{
+    error::{ContractError, Result},
+    instance::ContractInstance,
+};
 
 /// A parsed JSON ABI used for dynamic function encoding and decoding.
 ///
@@ -25,19 +27,13 @@ use crate::instance::ContractInstance;
 /// let abi: JsonAbi = serde_json::from_str(r#"[...]"#).unwrap();
 /// let interface = Interface::new(abi);
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Interface {
     abi: JsonAbi,
     /// selector → (function_name, overload_index)
     functions: HashMap<Selector, (String, usize)>,
     /// topic0 → (event_name, overload_index)
     events: HashMap<B256, (String, usize)>,
-}
-
-impl Default for Interface {
-    fn default() -> Self {
-        Self { abi: JsonAbi::default(), functions: HashMap::new(), events: HashMap::new() }
-    }
 }
 
 impl Interface {
@@ -48,7 +44,11 @@ impl Interface {
     pub fn new(abi: JsonAbi) -> Self {
         let functions = build_selector_map(&abi);
         let events = build_event_map(&abi);
-        Self { abi, functions, events }
+        Self {
+            abi,
+            functions,
+            events,
+        }
     }
 
     /// Create an empty interface (no functions, no events).
@@ -82,7 +82,10 @@ impl Interface {
         selector: &Selector,
         args: &[DynSolValue],
     ) -> Result<Bytes> {
-        Ok(self.get_by_selector(selector)?.abi_encode_input(args)?.into())
+        Ok(self
+            .get_by_selector(selector)?
+            .abi_encode_input(args)?
+            .into())
     }
 
     // ── decode input ──────────────────────────────────────────────────────────
@@ -118,7 +121,8 @@ impl Interface {
     ) -> Result<Vec<DynSolValue>> {
         let f = self.get_by_selector(selector)?;
         let name = f.name.as_str();
-        f.abi_decode_output(data).map_err(|e| ContractError::decode_err(name, data, e))
+        f.abi_decode_output(data)
+            .map_err(|e| ContractError::decode_err(name, data, e))
     }
 
     // ── decode log ────────────────────────────────────────────────────────────

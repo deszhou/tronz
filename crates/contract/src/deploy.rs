@@ -122,7 +122,10 @@ impl<P: TronProvider> DeployBuilder<P> {
     ///
     /// [`TransactionInfo::contract_address`]: tronz_provider::types::TransactionInfo::contract_address
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self.provider.signer_address().ok_or(ContractError::NoSigner)?;
+        let owner = self
+            .provider
+            .signer_address()
+            .ok_or(ContractError::NoSigner)?;
 
         let mut req = TransactionRequest::default().with_contract(
             ContractType::CreateSmartContract(CreateSmartContract {
@@ -140,6 +143,9 @@ impl<P: TronProvider> DeployBuilder<P> {
             req = req.with_fee_limit(limit);
         }
 
-        self.provider.send_transaction(req).await.map_err(ContractError::Provider)
+        self.provider
+            .send_transaction(req)
+            .await
+            .map_err(ContractError::Provider)
     }
 }
