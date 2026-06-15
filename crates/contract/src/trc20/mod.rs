@@ -1,8 +1,8 @@
 //! TRC20 ABI bindings and (optionally) the provider-bound [`Trc20Instance`].
 //!
 //! TRC20 is byte-for-byte compatible with the EVM ERC20 ABI, so the interface
-//! and all call/return codecs are generated directly by `alloy`'s [`sol!`]
-//! macro. No bespoke ABI codec is needed.
+//! and all call/return codecs are generated directly by `alloy`'s
+//! [`sol!`](alloy_sol_macro::sol) macro. No bespoke ABI codec is needed.
 
 #[cfg(feature = "provider")]
 pub mod instance;

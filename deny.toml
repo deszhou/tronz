@@ -27,14 +27,21 @@ allow = [
 # Warn on duplicate semver majors — common in the tonic/prost ecosystem.
 multiple-versions = "warn"
 # Wildcard version requirements (e.g. `dep = "*"`) are banned: they make
-# builds non-reproducible.
+# builds non-reproducible.  Path-only workspace deps are exempt.
 wildcards = "deny"
+allow-wildcard-paths = true
 highlight = "all"
 
 # ── Advisories ────────────────────────────────────────────────────────────────
 [advisories]
 version = 2
 db-urls = ["https://github.com/rustsec/advisory-db"]
+ignore = [
+    # paste — dtolnay marked it unmaintained; no security issue, transitive dep
+    { id = "RUSTSEC-2024-0436", reason = "no security impact; transitive dep we cannot remove" },
+    # proc-macro-error2 — unmaintained; transitive dep from tonic/prost ecosystem
+    { id = "RUSTSEC-2026-0173", reason = "no security impact; transitive dep we cannot remove" },
+]
 
 # ── Sources ───────────────────────────────────────────────────────────────────
 [sources]

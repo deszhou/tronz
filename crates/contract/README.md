@@ -50,19 +50,16 @@ let receipt = pending.get_receipt().await?;
 ## Crate layout
 
 - [`trc20`] — static `sol!` bindings + [`Trc20Instance`] high-level wrapper
-- [`interface`] — [`Interface`] wrapping [`JsonAbi`] with O(1) selector lookup
-- [`instance`] — [`ContractInstance`] generic contract handle
-- [`error`] — [`ContractError`] and [`Result`] type alias
+- [`Interface`] wrapping [`JsonAbi`] with O(1) selector lookup
+- [`ContractInstance`] — generic contract handle
+- [`ContractError`] and [`Result`] type alias
 
-[`ContractInstance`]: crate::instance::ContractInstance
-[`Interface`]: crate::interface::Interface
+[`ContractInstance`]: crate::ContractInstance
+[`Interface`]: crate::Interface
 [`Trc20Instance`]: crate::trc20::Trc20Instance
-[`ContractError`]: crate::error::ContractError
-[`Result`]: crate::error::Result
+[`ContractError`]: crate::ContractError
+[`Result`]: crate::Result
 [`trc20`]: crate::trc20
-[`interface`]: crate::interface
-[`instance`]: crate::instance
-[`error`]: crate::error
 [`JsonAbi`]: alloy_json_abi::JsonAbi
 
 ## License
