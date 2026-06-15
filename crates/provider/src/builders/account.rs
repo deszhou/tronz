@@ -2,6 +2,7 @@
 
 use tronz_primitives::Address;
 
+use super::resolve_owner;
 use crate::{
     error::{Error, Result},
     provider::{PendingTransaction, TronProvider},
@@ -51,10 +52,7 @@ impl<'a, P: TronProvider> CreateAccountBuilder<'a, P> {
 
     /// Build, sign, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
         let account_address = self
             .account_address
             .ok_or(Error::MissingField("account_address"))?;
@@ -113,10 +111,7 @@ impl<'a, P: TronProvider> UpdateAccountBuilder<'a, P> {
 
     /// Build, sign, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
         let name = self.name.ok_or(Error::MissingField("name"))?;
 
         let req = TransactionRequest {

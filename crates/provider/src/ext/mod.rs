@@ -5,16 +5,24 @@
 //! the methods on your provider:
 //!
 //! ```ignore
-//! use tronz_provider::ext::Trc10Api;
+//! use tronz_provider::ext::{Trc10Api, WitnessApi};
 //!
 //! let info = provider.get_asset_info("1000001").await?;
-//! let pending = provider.transfer_trc10()
-//!     .to(recipient)
-//!     .token_id("1000001")
-//!     .amount(1_000_000)
+//! let pending = provider
+//!     .become_witness()
+//!     .url("https://my-sr.example.com")
 //!     .send()
 //!     .await?;
 //! ```
 
+mod governance;
 mod trc10;
-pub use trc10::{TransferTrc10Builder, Trc10Api};
+mod witness;
+pub use governance::{
+    ApproveProposalBuilder, CancelProposalBuilder, GovernanceApi, SubmitProposalBuilder,
+};
+pub use trc10::{
+    IssueTrc10Builder, ParticipateTrc10Builder, TransferTrc10Builder, Trc10Api,
+    UnfreezeTrc10Builder, UpdateTrc10Builder,
+};
+pub use witness::{BecomeWitnessBuilder, UpdateBrokerageBuilder, UpdateWitnessBuilder, WitnessApi};

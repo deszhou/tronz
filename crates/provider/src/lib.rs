@@ -14,12 +14,15 @@ mod error;
 pub use error::{Error, Result, TransportError};
 
 mod provider;
-pub use ext::Trc10Api;
+pub use ext::{GovernanceApi, Trc10Api, WitnessApi};
 pub use fillers::HasSigner;
 pub use provider::{
     FilledProvider, PendingTransaction, ProviderBuilder, RootProvider, TronProvider,
 };
 pub use transport::TronTransport;
+pub use types::{
+    AccountNet, ChainProperties, NodeAddress, NodeInfo, ProposalInfo, ProposalState, SignWeight,
+};
 
 // Private: prost-generated code + codec conversions never leak publicly.
 pub(crate) mod proto;

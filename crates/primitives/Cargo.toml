@@ -1,6 +1,8 @@
 [package]
 name         = "tronz-primitives"
 description  = "Leaf primitive types for the tronz TRON SDK (Address, Trx, ResourceCode, signatures)."
+keywords     = ["tron", "blockchain", "cryptocurrency", "primitives", "address"]
+categories   = ["cryptography::cryptocurrencies", "network-programming", "api-bindings", "asynchronous"]
 version      = { workspace = true }
 edition      = { workspace = true }
 rust-version = { workspace = true }

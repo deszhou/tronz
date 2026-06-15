@@ -1,6 +1,8 @@
 [package]
 name         = "tronz-contract"
 description  = "ABI bindings and contract instances for the tronz TRON SDK."
+keywords     = ["tron", "blockchain", "smart-contracts", "trc20", "abi"]
+categories   = ["cryptography::cryptocurrencies", "network-programming", "api-bindings", "asynchronous"]
 version      = { workspace = true }
 edition      = { workspace = true }
 rust-version = { workspace = true }

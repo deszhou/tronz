@@ -6,16 +6,20 @@
 use core::future::Future;
 use std::collections::HashMap;
 
-use tronz_primitives::{Address, ResourceCode, Trx, TxId};
+use tronz_primitives::{Address, B256, ResourceCode, Trx, TxId};
 
 use crate::types::{
-    AccountInfo, AccountPermissionUpdateContract, AccountResource, AssetInfo, AssetIssueContract,
-    BlockInfo, ConstantCallResult, CreateAccountContract, CreateSmartContract, DelegatedResource,
-    DelegatedResourceIndex, FreezeBalanceV2Contract, RawTransaction, SignedTransaction,
-    SmartContractInfo, TransactionInfo, TransferAssetContract, TransferContract,
-    TriggerSmartContract, UnDelegateResourceContract, UnfreezeBalanceV2Contract,
-    UpdateAccountContract, VoteWitnessContract, WithdrawBalanceContract,
-    WithdrawExpireUnfreezeContract, WitnessInfo,
+    AccountInfo, AccountNet, AccountPermissionUpdateContract, AccountResource, AssetInfo,
+    AssetIssueContract, BlockInfo, ChainProperties, ClearContractAbiContract, ConstantCallResult,
+    CreateAccountContract, CreateSmartContract, CreateWitnessContract, DelegatedResource,
+    DelegatedResourceIndex, FreezeBalanceV2Contract, NodeAddress, NodeInfo,
+    ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract,
+    ProposalDeleteContract, ProposalInfo, RawTransaction, SetAccountIdContract, SignWeight,
+    SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract, TransferContract,
+    TriggerSmartContract, UnDelegateResourceContract, UnfreezeAssetContract,
+    UnfreezeBalanceV2Contract, UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract,
+    UpdateEnergyLimitContract, UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract,
+    WithdrawBalanceContract, WithdrawExpireUnfreezeContract, WitnessInfo,
 };
 
 pub mod grpc;
@@ -211,6 +215,43 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
     /// List all super representatives and candidates.
     fn list_witnesses(&self) -> impl Future<Output = Result<Vec<WitnessInfo>, Self::Error>> + Send;
 
+    // --- Governance ---
+
+    /// Submit a chain-parameter governance proposal.
+    fn proposal_create(
+        &self,
+        params: ProposalCreateContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Approve or revoke approval for a governance proposal.
+    fn proposal_approve(
+        &self,
+        params: ProposalApproveContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Cancel a governance proposal.
+    fn proposal_delete(
+        &self,
+        params: ProposalDeleteContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// List all on-chain proposals.
+    fn list_proposals(&self)
+    -> impl Future<Output = Result<Vec<ProposalInfo>, Self::Error>> + Send;
+
+    /// Fetch a paginated list of proposals.
+    fn get_paginated_proposal_list(
+        &self,
+        offset: i64,
+        limit: i64,
+    ) -> impl Future<Output = Result<Vec<ProposalInfo>, Self::Error>> + Send;
+
+    /// Fetch a single proposal by its ID.
+    fn get_proposal_by_id(
+        &self,
+        proposal_id: i64,
+    ) -> impl Future<Output = Result<ProposalInfo, Self::Error>> + Send;
+
     // --- TRC10 ---
 
     /// Build a TRC10 token issuance transaction.
@@ -244,6 +285,40 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
         limit: i64,
     ) -> impl Future<Output = Result<Vec<AssetInfo>, Self::Error>> + Send;
 
+    /// Fetch a TRC10 token by name.
+    ///
+    /// Token names are not unique after the `ALLOW_SAME_TOKEN_NAME` proposal;
+    /// use [`get_asset_issue_list_by_name`](Self::get_asset_issue_list_by_name)
+    /// if multiple tokens share the same name.
+    fn get_asset_issue_by_name(
+        &self,
+        name: &str,
+    ) -> impl Future<Output = Result<AssetInfo, Self::Error>> + Send;
+
+    /// Fetch all TRC10 tokens with a given name.
+    fn get_asset_issue_list_by_name(
+        &self,
+        name: &str,
+    ) -> impl Future<Output = Result<Vec<AssetInfo>, Self::Error>> + Send;
+
+    /// Build a participate-in-ICO transaction (buy TRC10 tokens with TRX).
+    fn participate_asset_issue(
+        &self,
+        params: ParticipateAssetIssueContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Build an unfreeze-asset transaction (release frozen TRC10 supply).
+    fn unfreeze_asset(
+        &self,
+        params: UnfreezeAssetContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Build an update-asset transaction (change TRC10 metadata).
+    fn update_asset(
+        &self,
+        params: UpdateAssetContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
     // --- Account management ---
 
     /// Activate a new account on-chain.
@@ -264,6 +339,30 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
         params: UpdateAccountContract,
     ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
 
+    /// Set a short alphanumeric account ID (on-chain alias).
+    fn set_account_id(
+        &self,
+        params: SetAccountIdContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Clear the ABI of a deployed smart contract.
+    fn clear_contract_abi(
+        &self,
+        params: ClearContractAbiContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Update the caller-energy-percentage setting on a smart contract.
+    fn update_setting(
+        &self,
+        params: UpdateSettingContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Update the per-call origin energy limit on a smart contract.
+    fn update_energy_limit(
+        &self,
+        params: UpdateEnergyLimitContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
     // --- Staking queries ---
 
     /// Query how much TRX can be withdrawn from expired unfreeze windows.
@@ -282,4 +381,163 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
         &self,
         address: Address,
     ) -> impl Future<Output = Result<i64, Self::Error>> + Send;
+
+    // --- Pricing / fees ---
+
+    /// Fetch the historical bandwidth price schedule (colon-separated pairs).
+    fn get_bandwidth_prices(&self) -> impl Future<Output = Result<String, Self::Error>> + Send;
+
+    /// Fetch the historical energy price schedule (colon-separated pairs).
+    fn get_energy_prices(&self) -> impl Future<Output = Result<String, Self::Error>> + Send;
+
+    /// Fetch the memo-attach fee schedule.
+    fn get_memo_fee(&self) -> impl Future<Output = Result<u64, Self::Error>> + Send;
+
+    // --- Network / chain ---
+
+    /// Fetch the next maintenance-cycle timestamp (unix ms).
+    fn get_next_maintenance_time(&self) -> impl Future<Output = Result<i64, Self::Error>> + Send;
+
+    /// Fetch the total amount of TRX that has been burned.
+    fn get_burn_trx(&self) -> impl Future<Output = Result<u64, Self::Error>> + Send;
+
+    /// Fetch the total number of transactions ever processed.
+    fn get_total_transactions(&self) -> impl Future<Output = Result<u64, Self::Error>> + Send;
+
+    /// Fetch basic info about the connected node.
+    fn get_node_info(&self) -> impl Future<Output = Result<NodeInfo, Self::Error>> + Send;
+
+    /// List all known gossip-network peer addresses.
+    fn list_nodes(&self) -> impl Future<Output = Result<Vec<NodeAddress>, Self::Error>> + Send;
+
+    /// Fetch dynamic chain properties (head block id, number, timestamp).
+    fn get_dynamic_properties(
+        &self,
+    ) -> impl Future<Output = Result<ChainProperties, Self::Error>> + Send;
+
+    // --- Block queries ---
+
+    /// Fetch a block by its hash (block id).
+    fn get_block_by_id(
+        &self,
+        block_id: B256,
+    ) -> impl Future<Output = Result<BlockInfo, Self::Error>> + Send;
+
+    /// Fetch the `count` most recent blocks.
+    fn get_blocks_by_latest_num(
+        &self,
+        count: i64,
+    ) -> impl Future<Output = Result<Vec<BlockInfo>, Self::Error>> + Send;
+
+    /// Fetch blocks in the range `[start, end)`.
+    fn get_blocks_by_limit(
+        &self,
+        start: i64,
+        end: i64,
+    ) -> impl Future<Output = Result<Vec<BlockInfo>, Self::Error>> + Send;
+
+    /// Count transactions in a given block by block number.
+    fn get_transaction_count_by_block_num(
+        &self,
+        block_num: i64,
+    ) -> impl Future<Output = Result<u64, Self::Error>> + Send;
+
+    // --- Transaction history ---
+
+    /// Fetch paginated transactions sent *from* an address.
+    fn get_transactions_from(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> impl Future<Output = Result<Vec<RawTransaction>, Self::Error>> + Send;
+
+    /// Fetch paginated transactions sent *to* an address.
+    fn get_transactions_to(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> impl Future<Output = Result<Vec<RawTransaction>, Self::Error>> + Send;
+
+    /// Fetch all transaction infos included in a given block.
+    fn get_transaction_info_by_block_num(
+        &self,
+        block_num: i64,
+    ) -> impl Future<Output = Result<Vec<TransactionInfo>, Self::Error>> + Send;
+
+    // --- Pending pool ---
+
+    /// Fetch the number of pending (unconfirmed) transactions.
+    fn get_pending_size(&self) -> impl Future<Output = Result<u64, Self::Error>> + Send;
+
+    /// Fetch a single pending transaction by id.
+    fn get_transaction_from_pending(
+        &self,
+        tx_id: TxId,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Fetch all pending transactions.
+    fn get_pending_transactions(
+        &self,
+    ) -> impl Future<Output = Result<Vec<RawTransaction>, Self::Error>> + Send;
+
+    // --- Multi-sig ---
+
+    /// Query the sign-weight status for a transaction (how many sigs are
+    /// present and whether the threshold is met).
+    fn get_transaction_sign_weight(
+        &self,
+        tx: &RawTransaction,
+    ) -> impl Future<Output = Result<SignWeight, Self::Error>> + Send;
+
+    /// Fetch the list of addresses that have already signed a transaction.
+    fn get_transaction_approved_list(
+        &self,
+        tx: &RawTransaction,
+    ) -> impl Future<Output = Result<Vec<Address>, Self::Error>> + Send;
+
+    // --- Account net ---
+
+    /// Fetch bandwidth and energy net-usage for an account.
+    fn get_account_net(
+        &self,
+        address: Address,
+    ) -> impl Future<Output = Result<AccountNet, Self::Error>> + Send;
+
+    // --- Witness ---
+
+    /// Apply to become a super representative candidate.
+    fn create_witness(
+        &self,
+        params: CreateWitnessContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Update a super representative's public URL.
+    fn update_witness(
+        &self,
+        params: UpdateWitnessContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Update a super representative's brokerage ratio.
+    fn update_brokerage(
+        &self,
+        params: UpdateBrokerageContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Fetch the brokerage ratio (0–100) for a super representative.
+    fn get_brokerage(
+        &self,
+        address: Address,
+    ) -> impl Future<Output = Result<u64, Self::Error>> + Send;
+
+    /// Fetch the unclaimed reward amount for an address (alias for
+    /// [`crate::provider::TronProvider::get_reward`]).
+    ///
+    /// Unlike [`crate::provider::TronProvider::get_reward`] which returns [`Trx`], this returns the
+    /// raw sun value.
+    fn get_reward_info(
+        &self,
+        address: Address,
+    ) -> impl Future<Output = Result<u64, Self::Error>> + Send;
 }

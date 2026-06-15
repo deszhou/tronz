@@ -2,14 +2,15 @@
 
 use std::{collections::HashMap, sync::Arc};
 
-use tronz_primitives::{Address, ResourceCode, Trx, TxId};
+use tronz_primitives::{Address, B256, ResourceCode, Trx, TxId};
 
 use crate::{
     error::{Error, Result},
     provider::{PendingTransaction, TronProvider},
     transport::TronTransport,
     types::{
-        AccountInfo, AccountResource, BlockInfo, DelegatedResource, DelegatedResourceIndex,
+        AccountInfo, AccountNet, AccountResource, BlockInfo, ChainProperties, DelegatedResource,
+        DelegatedResourceIndex, NodeAddress, NodeInfo, RawTransaction, SignWeight,
         SignedTransaction, SmartContractInfo, TransactionInfo, TransactionRequest,
         TriggerSmartContract, WitnessInfo,
     },
@@ -169,6 +170,211 @@ impl<T: TronTransport> TronProvider for RootProvider<T> {
         self.inner
             .transport
             .list_witnesses()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_bandwidth_prices(&self) -> Result<String> {
+        self.inner
+            .transport
+            .get_bandwidth_prices()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_energy_prices(&self) -> Result<String> {
+        self.inner
+            .transport
+            .get_energy_prices()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_memo_fee(&self) -> Result<u64> {
+        self.inner
+            .transport
+            .get_memo_fee()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_next_maintenance_time(&self) -> Result<i64> {
+        self.inner
+            .transport
+            .get_next_maintenance_time()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_burn_trx(&self) -> Result<u64> {
+        self.inner
+            .transport
+            .get_burn_trx()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_total_transactions(&self) -> Result<u64> {
+        self.inner
+            .transport
+            .get_total_transactions()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_node_info(&self) -> Result<NodeInfo> {
+        self.inner
+            .transport
+            .get_node_info()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn list_nodes(&self) -> Result<Vec<NodeAddress>> {
+        self.inner
+            .transport
+            .list_nodes()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_dynamic_properties(&self) -> Result<ChainProperties> {
+        self.inner
+            .transport
+            .get_dynamic_properties()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_block_by_id(&self, block_id: B256) -> Result<BlockInfo> {
+        self.inner
+            .transport
+            .get_block_by_id(block_id)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_blocks_by_latest_num(&self, count: i64) -> Result<Vec<BlockInfo>> {
+        self.inner
+            .transport
+            .get_blocks_by_latest_num(count)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_blocks_by_limit(&self, start: i64, end: i64) -> Result<Vec<BlockInfo>> {
+        self.inner
+            .transport
+            .get_blocks_by_limit(start, end)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_transaction_count_by_block_num(&self, block_num: i64) -> Result<u64> {
+        self.inner
+            .transport
+            .get_transaction_count_by_block_num(block_num)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_transactions_from(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<RawTransaction>> {
+        self.inner
+            .transport
+            .get_transactions_from(address, offset, limit)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_transactions_to(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<RawTransaction>> {
+        self.inner
+            .transport
+            .get_transactions_to(address, offset, limit)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_transaction_info_by_block_num(
+        &self,
+        block_num: i64,
+    ) -> Result<Vec<TransactionInfo>> {
+        self.inner
+            .transport
+            .get_transaction_info_by_block_num(block_num)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_pending_size(&self) -> Result<u64> {
+        self.inner
+            .transport
+            .get_pending_size()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_transaction_from_pending(&self, tx_id: TxId) -> Result<RawTransaction> {
+        self.inner
+            .transport
+            .get_transaction_from_pending(tx_id)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_pending_transactions(&self) -> Result<Vec<RawTransaction>> {
+        self.inner
+            .transport
+            .get_pending_transactions()
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_transaction_sign_weight(&self, tx: &RawTransaction) -> Result<SignWeight> {
+        self.inner
+            .transport
+            .get_transaction_sign_weight(tx)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_transaction_approved_list(&self, tx: &RawTransaction) -> Result<Vec<Address>> {
+        self.inner
+            .transport
+            .get_transaction_approved_list(tx)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_account_net(&self, address: Address) -> Result<AccountNet> {
+        self.inner
+            .transport
+            .get_account_net(address)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_brokerage(&self, address: Address) -> Result<u64> {
+        self.inner
+            .transport
+            .get_brokerage(address)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_reward_info(&self, address: Address) -> Result<u64> {
+        self.inner
+            .transport
+            .get_reward_info(address)
             .await
             .map_err(|e| Error::Transport(e.into()))
     }

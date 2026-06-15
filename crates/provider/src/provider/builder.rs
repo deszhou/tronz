@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use tronz_primitives::{Address, ResourceCode, Trx, TxId};
+use tronz_primitives::{Address, B256, ResourceCode, Trx, TxId};
 use tronz_signer::TronSigner;
 
 use crate::{
@@ -13,9 +13,10 @@ use crate::{
     provider::{PendingTransaction, RootProvider, TronProvider},
     transport::{TronTransport, grpc::GrpcTransport},
     types::{
-        AccountInfo, AccountResource, BlockInfo, ContractType, DelegatedResource,
-        DelegatedResourceIndex, SignedTransaction, SmartContractInfo, TransactionInfo,
-        TransactionRequest, TriggerSmartContract, WitnessInfo,
+        AccountInfo, AccountNet, AccountResource, BlockInfo, ChainProperties, ContractType,
+        DelegatedResource, DelegatedResourceIndex, NodeAddress, NodeInfo, RawTransaction,
+        SignWeight, SignedTransaction, SmartContractInfo, TransactionInfo, TransactionRequest,
+        TriggerSmartContract, WitnessInfo,
     },
 };
 
@@ -238,6 +239,121 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         self.inner.list_witnesses().await
     }
 
+    async fn get_bandwidth_prices(&self) -> Result<String> {
+        self.inner.get_bandwidth_prices().await
+    }
+
+    async fn get_energy_prices(&self) -> Result<String> {
+        self.inner.get_energy_prices().await
+    }
+
+    async fn get_memo_fee(&self) -> Result<u64> {
+        self.inner.get_memo_fee().await
+    }
+
+    async fn get_next_maintenance_time(&self) -> Result<i64> {
+        self.inner.get_next_maintenance_time().await
+    }
+
+    async fn get_burn_trx(&self) -> Result<u64> {
+        self.inner.get_burn_trx().await
+    }
+
+    async fn get_total_transactions(&self) -> Result<u64> {
+        self.inner.get_total_transactions().await
+    }
+
+    async fn get_node_info(&self) -> Result<NodeInfo> {
+        self.inner.get_node_info().await
+    }
+
+    async fn list_nodes(&self) -> Result<Vec<NodeAddress>> {
+        self.inner.list_nodes().await
+    }
+
+    async fn get_dynamic_properties(&self) -> Result<ChainProperties> {
+        self.inner.get_dynamic_properties().await
+    }
+
+    async fn get_block_by_id(&self, block_id: B256) -> Result<BlockInfo> {
+        self.inner.get_block_by_id(block_id).await
+    }
+
+    async fn get_blocks_by_latest_num(&self, count: i64) -> Result<Vec<BlockInfo>> {
+        self.inner.get_blocks_by_latest_num(count).await
+    }
+
+    async fn get_blocks_by_limit(&self, start: i64, end: i64) -> Result<Vec<BlockInfo>> {
+        self.inner.get_blocks_by_limit(start, end).await
+    }
+
+    async fn get_transaction_count_by_block_num(&self, block_num: i64) -> Result<u64> {
+        self.inner
+            .get_transaction_count_by_block_num(block_num)
+            .await
+    }
+
+    async fn get_transactions_from(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<RawTransaction>> {
+        self.inner
+            .get_transactions_from(address, offset, limit)
+            .await
+    }
+
+    async fn get_transactions_to(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<RawTransaction>> {
+        self.inner.get_transactions_to(address, offset, limit).await
+    }
+
+    async fn get_transaction_info_by_block_num(
+        &self,
+        block_num: i64,
+    ) -> Result<Vec<TransactionInfo>> {
+        self.inner
+            .get_transaction_info_by_block_num(block_num)
+            .await
+    }
+
+    async fn get_pending_size(&self) -> Result<u64> {
+        self.inner.get_pending_size().await
+    }
+
+    async fn get_transaction_from_pending(&self, tx_id: TxId) -> Result<RawTransaction> {
+        self.inner.get_transaction_from_pending(tx_id).await
+    }
+
+    async fn get_pending_transactions(&self) -> Result<Vec<RawTransaction>> {
+        self.inner.get_pending_transactions().await
+    }
+
+    async fn get_transaction_sign_weight(&self, tx: &RawTransaction) -> Result<SignWeight> {
+        self.inner.get_transaction_sign_weight(tx).await
+    }
+
+    async fn get_transaction_approved_list(&self, tx: &RawTransaction) -> Result<Vec<Address>> {
+        self.inner.get_transaction_approved_list(tx).await
+    }
+
+    async fn get_account_net(&self, address: Address) -> Result<AccountNet> {
+        self.inner.get_account_net(address).await
+    }
+
+    async fn get_brokerage(&self, address: Address) -> Result<u64> {
+        self.inner.get_brokerage(address).await
+    }
+
+    async fn get_reward_info(&self, address: Address) -> Result<u64> {
+        self.inner.get_reward_info(address).await
+    }
+
     async fn get_can_withdraw_unfreeze_amount(
         &self,
         address: Address,
@@ -323,6 +439,18 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
                 .transfer_asset(c)
                 .await
                 .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::ParticipateAssetIssue(c) => transport
+                .participate_asset_issue(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UnfreezeAsset(c) => transport
+                .unfreeze_asset(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UpdateAsset(c) => transport
+                .update_asset(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
             ContractType::CreateAccount(c) => transport
                 .create_account(c)
                 .await
@@ -333,6 +461,46 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
                 .map_err(|e| Error::Transport(e.into()))?,
             ContractType::UpdateAccount(c) => transport
                 .update_account(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::ProposalCreate(c) => transport
+                .proposal_create(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::ProposalApprove(c) => transport
+                .proposal_approve(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::ProposalDelete(c) => transport
+                .proposal_delete(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::CreateWitness(c) => transport
+                .create_witness(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UpdateWitness(c) => transport
+                .update_witness(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UpdateBrokerage(c) => transport
+                .update_brokerage(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::SetAccountId(c) => transport
+                .set_account_id(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::ClearContractAbi(c) => transport
+                .clear_contract_abi(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UpdateSetting(c) => transport
+                .update_setting(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UpdateEnergyLimit(c) => transport
+                .update_energy_limit(c)
                 .await
                 .map_err(|e| Error::Transport(e.into()))?,
         };

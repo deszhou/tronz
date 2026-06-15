@@ -2,6 +2,7 @@
 
 use tronz_primitives::{Address, ResourceCode, Trx};
 
+use super::resolve_owner;
 use crate::{
     error::{Error, Result},
     provider::{PendingTransaction, TronProvider},
@@ -65,10 +66,7 @@ impl<'a, P: TronProvider> DelegateBuilder<'a, P> {
 
     /// Build, sign, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
         let to = self.to.ok_or(Error::MissingField("to"))?;
         let amount = self.amount.ok_or(Error::MissingField("amount"))?;
 
@@ -133,10 +131,7 @@ impl<'a, P: TronProvider> UndelegateBuilder<'a, P> {
 
     /// Build, sign, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
         let from = self.from.ok_or(Error::MissingField("from"))?;
         let amount = self.amount.ok_or(Error::MissingField("amount"))?;
 

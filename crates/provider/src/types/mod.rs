@@ -6,6 +6,7 @@
 pub mod account;
 pub mod block;
 pub mod contract;
+pub mod network;
 pub mod receipt;
 pub mod transaction;
 pub mod trc10;
@@ -17,11 +18,18 @@ pub use account::{
 pub use block::BlockInfo;
 pub use contract::{
     AccountPermissionUpdateContract, AssetIssueContract, CancelAllUnfreezeV2Contract,
-    ConstantCallResult, ContractType, CreateAccountContract, CreateSmartContract,
-    DelegateResourceContract, FreezeBalanceV2Contract, FrozenSupply, Permission, PermissionKey,
+    ClearContractAbiContract, ConstantCallResult, ContractType, CreateAccountContract,
+    CreateSmartContract, CreateWitnessContract, DelegateResourceContract, FreezeBalanceV2Contract,
+    FrozenSupply, ParticipateAssetIssueContract, Permission, PermissionKey,
+    ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, SetAccountIdContract,
     SmartContractInfo, SrVote, TransferAssetContract, TransferContract, TriggerSmartContract,
-    UnDelegateResourceContract, UnfreezeBalanceV2Contract, UpdateAccountContract,
-    VoteWitnessContract, WithdrawBalanceContract, WithdrawExpireUnfreezeContract,
+    UnDelegateResourceContract, UnfreezeAssetContract, UnfreezeBalanceV2Contract,
+    UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract,
+    UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
+    WithdrawExpireUnfreezeContract,
+};
+pub use network::{
+    AccountNet, ChainProperties, NodeAddress, NodeInfo, ProposalInfo, ProposalState, SignWeight,
 };
 pub use receipt::{ContractResult, Log, ResourceReceipt, TransactionInfo, TxStatus};
 pub use transaction::{RawTransaction, SignedTransaction, TransactionRequest};

@@ -1,5 +1,7 @@
 //! TRON native contract types and their parameter structs.
 
+use std::collections::HashMap;
+
 use tronz_primitives::{Address, Bytes, ResourceCode, Trx};
 
 /// All TRON native contract types. Discriminants mirror the protobuf
@@ -37,12 +39,38 @@ pub enum ContractType {
     AssetIssue(AssetIssueContract),
     /// Transfer a TRC10 token.
     TransferAsset(TransferAssetContract),
+    /// Participate in a TRC10 token ICO.
+    ParticipateAssetIssue(ParticipateAssetIssueContract),
+    /// Release frozen TRC10 token supply after the lock period.
+    UnfreezeAsset(UnfreezeAssetContract),
+    /// Update TRC10 token metadata.
+    UpdateAsset(UpdateAssetContract),
     /// Activate a new account by sending TRX to it.
     CreateAccount(CreateAccountContract),
     /// Vote for super representatives.
     VoteWitness(VoteWitnessContract),
     /// Update account name.
     UpdateAccount(UpdateAccountContract),
+    /// Submit a chain-parameter governance proposal.
+    ProposalCreate(ProposalCreateContract),
+    /// Approve or disapprove a governance proposal.
+    ProposalApprove(ProposalApproveContract),
+    /// Cancel a governance proposal.
+    ProposalDelete(ProposalDeleteContract),
+    /// Apply to become a super representative candidate.
+    CreateWitness(CreateWitnessContract),
+    /// Update a super representative's public URL.
+    UpdateWitness(UpdateWitnessContract),
+    /// Update a super representative's brokerage ratio.
+    UpdateBrokerage(UpdateBrokerageContract),
+    /// Set a short alphanumeric on-chain account ID.
+    SetAccountId(SetAccountIdContract),
+    /// Clear a deployed smart contract's ABI.
+    ClearContractAbi(ClearContractAbiContract),
+    /// Update the caller-energy-percentage setting on a smart contract.
+    UpdateSetting(UpdateSettingContract),
+    /// Update the per-call origin energy limit on a smart contract.
+    UpdateEnergyLimit(UpdateEnergyLimitContract),
 }
 
 impl ContractType {
@@ -71,9 +99,22 @@ impl ContractType {
             ContractType::CreateSmartContract(c) => c.owner_address,
             ContractType::AssetIssue(c) => c.owner_address,
             ContractType::TransferAsset(c) => c.owner_address,
+            ContractType::ParticipateAssetIssue(c) => c.owner_address,
+            ContractType::UnfreezeAsset(c) => c.owner_address,
+            ContractType::UpdateAsset(c) => c.owner_address,
             ContractType::CreateAccount(c) => c.owner_address,
             ContractType::VoteWitness(c) => c.owner_address,
             ContractType::UpdateAccount(c) => c.owner_address,
+            ContractType::ProposalCreate(c) => c.owner_address,
+            ContractType::ProposalApprove(c) => c.owner_address,
+            ContractType::ProposalDelete(c) => c.owner_address,
+            ContractType::CreateWitness(c) => c.owner_address,
+            ContractType::UpdateWitness(c) => c.owner_address,
+            ContractType::UpdateBrokerage(c) => c.owner_address,
+            ContractType::SetAccountId(c) => c.owner_address,
+            ContractType::ClearContractAbi(c) => c.owner_address,
+            ContractType::UpdateSetting(c) => c.owner_address,
+            ContractType::UpdateEnergyLimit(c) => c.owner_address,
         }
     }
 }
@@ -258,6 +299,48 @@ pub struct FrozenSupply {
     pub frozen_days: i64,
 }
 
+/// Participate in a TRC10 token ICO by buying tokens with TRX.
+///
+/// The buyer (`owner_address`) sends `amount` sun to `to_address` (the issuer)
+/// and receives the proportional amount of the token in return.
+#[derive(Clone, Debug)]
+pub struct ParticipateAssetIssueContract {
+    /// Buyer address.
+    pub owner_address: Address,
+    /// Issuer / ICO address (the token creator).
+    pub to_address: Address,
+    /// Numeric token ID as a string (e.g. `"1000001"`).
+    pub token_id: String,
+    /// Amount of TRX in sun to spend.
+    pub amount: i64,
+}
+
+/// Release TRC10 tokens that were locked as frozen supply during issuance.
+///
+/// After the lock period expires the issuer can call this to unfreeze them.
+#[derive(Clone, Debug)]
+pub struct UnfreezeAssetContract {
+    /// Issuer address.
+    pub owner_address: Address,
+}
+
+/// Update the metadata (description, URL, bandwidth limits) for a TRC10 token.
+///
+/// Only the original issuer can call this.
+#[derive(Clone, Debug)]
+pub struct UpdateAssetContract {
+    /// Issuer address.
+    pub owner_address: Address,
+    /// New description (UTF-8).
+    pub description: String,
+    /// New project URL.
+    pub url: String,
+    /// New per-account free-transfer bandwidth limit.
+    pub new_limit: i64,
+    /// New total free-transfer bandwidth limit.
+    pub new_public_limit: i64,
+}
+
 /// Transfer a TRC10 (native) token.
 #[derive(Clone, Debug)]
 pub struct TransferAssetContract {
@@ -338,6 +421,121 @@ pub struct PermissionKey {
     pub weight: i64,
 }
 
+/// Submit a chain-parameter governance proposal.
+///
+/// Only SRs and SR partners can call this. A proposal takes effect if at least
+/// 15 SRs (out of 27) approve it before the voting period ends.
+#[derive(Clone, Debug)]
+pub struct ProposalCreateContract {
+    /// Proposer address (must be an SR or SR partner).
+    pub owner_address: Address,
+    /// Map of chain parameter ID → proposed new value.
+    pub parameters: HashMap<i64, i64>,
+}
+
+/// Approve or disapprove a governance proposal.
+#[derive(Clone, Debug)]
+pub struct ProposalApproveContract {
+    /// Voter address (must be an SR or SR partner).
+    pub owner_address: Address,
+    /// ID of the proposal to vote on.
+    pub proposal_id: i64,
+    /// `true` = add approval, `false` = revoke approval.
+    pub is_add_approval: bool,
+}
+
+/// Cancel a governance proposal.
+///
+/// Only the original proposer can cancel, and only while it is still pending.
+#[derive(Clone, Debug)]
+pub struct ProposalDeleteContract {
+    /// Proposer address.
+    pub owner_address: Address,
+    /// ID of the proposal to cancel.
+    pub proposal_id: i64,
+}
+
+/// Apply to become a super representative (SR) candidate.
+///
+/// The applicant must post a 9,999 TRX deposit. The URL is a link to the SR's
+/// public information page.
+#[derive(Clone, Debug)]
+pub struct CreateWitnessContract {
+    /// Applicant address.
+    pub owner_address: Address,
+    /// Public URL for the SR's information page.
+    pub url: String,
+}
+
+/// Update a super representative's public URL.
+#[derive(Clone, Debug)]
+pub struct UpdateWitnessContract {
+    /// SR address.
+    pub owner_address: Address,
+    /// New public URL.
+    pub update_url: String,
+}
+
+/// Update a super representative's brokerage ratio.
+///
+/// `brokerage` is a percentage (0–100): portion of block rewards the SR keeps.
+/// The remainder is distributed to voters.
+#[derive(Clone, Debug)]
+pub struct UpdateBrokerageContract {
+    /// SR address.
+    pub owner_address: Address,
+    /// New brokerage ratio (0–100).
+    pub brokerage: i32,
+}
+
+/// Set a short alphanumeric account ID (on-chain alias).
+///
+/// The `account_id` must be unique across the network and can only be set once.
+#[derive(Clone, Debug)]
+pub struct SetAccountIdContract {
+    /// Account being named.
+    pub owner_address: Address,
+    /// The account ID to assign (UTF-8, up to 32 bytes).
+    pub account_id: String,
+}
+
+/// Clear the ABI of a deployed smart contract.
+///
+/// Only the contract owner can call this.
+#[derive(Clone, Debug)]
+pub struct ClearContractAbiContract {
+    /// Contract owner address.
+    pub owner_address: Address,
+    /// Address of the contract whose ABI is being cleared.
+    pub contract_address: Address,
+}
+
+/// Update the percentage of energy that callers pay (vs the contract origin).
+///
+/// Only the contract owner can call this.
+#[derive(Clone, Debug)]
+pub struct UpdateSettingContract {
+    /// Contract owner address.
+    pub owner_address: Address,
+    /// Address of the contract being updated.
+    pub contract_address: Address,
+    /// New percentage (0–100) of energy charged to callers.
+    pub consume_user_resource_percent: i64,
+}
+
+/// Update the per-call energy cap charged to the contract origin.
+///
+/// Only the contract owner can call this.
+#[derive(Clone, Debug)]
+pub struct UpdateEnergyLimitContract {
+    /// Contract owner address.
+    pub owner_address: Address,
+    /// Address of the contract being updated.
+    pub contract_address: Address,
+    /// New per-call energy limit for the origin.
+    pub origin_energy_limit: i64,
+}
+
 /// Result of a constant (read-only) smart-contract call.
 #[derive(Clone, Debug, Default)]
 pub struct ConstantCallResult {
@@ -347,6 +545,161 @@ pub struct ConstantCallResult {
     pub energy_used: i64,
     /// Revert message, if the call reverted.
     pub revert_reason: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // USDT contract address (mainnet), used as a stable test address.
+    const ADDR: &str = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t";
+
+    fn addr() -> Address {
+        ADDR.parse().unwrap()
+    }
+
+    #[test]
+    fn owner_address_new_variants() {
+        let a = addr();
+
+        // Governance
+        let c = ContractType::ProposalCreate(ProposalCreateContract {
+            owner_address: a,
+            parameters: Default::default(),
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::ProposalApprove(ProposalApproveContract {
+            owner_address: a,
+            proposal_id: 1,
+            is_add_approval: true,
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::ProposalDelete(ProposalDeleteContract {
+            owner_address: a,
+            proposal_id: 1,
+        });
+        assert_eq!(c.owner_address(), a);
+
+        // Witness
+        let c = ContractType::CreateWitness(CreateWitnessContract {
+            owner_address: a,
+            url: "https://example.com".into(),
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::UpdateWitness(UpdateWitnessContract {
+            owner_address: a,
+            update_url: "https://example.com".into(),
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::UpdateBrokerage(UpdateBrokerageContract {
+            owner_address: a,
+            brokerage: 20,
+        });
+        assert_eq!(c.owner_address(), a);
+
+        // Account / contract management
+        let c = ContractType::SetAccountId(SetAccountIdContract {
+            owner_address: a,
+            account_id: "myacct".into(),
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::ClearContractAbi(ClearContractAbiContract {
+            owner_address: a,
+            contract_address: a,
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::UpdateSetting(UpdateSettingContract {
+            owner_address: a,
+            contract_address: a,
+            consume_user_resource_percent: 100,
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::UpdateEnergyLimit(UpdateEnergyLimitContract {
+            owner_address: a,
+            contract_address: a,
+            origin_energy_limit: 100_000,
+        });
+        assert_eq!(c.owner_address(), a);
+
+        // TRC10
+        let c = ContractType::ParticipateAssetIssue(ParticipateAssetIssueContract {
+            owner_address: a,
+            to_address: a,
+            token_id: "1000001".into(),
+            amount: 1_000_000,
+        });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::UnfreezeAsset(UnfreezeAssetContract { owner_address: a });
+        assert_eq!(c.owner_address(), a);
+
+        let c = ContractType::UpdateAsset(UpdateAssetContract {
+            owner_address: a,
+            description: "desc".into(),
+            url: "https://example.com".into(),
+            new_limit: 0,
+            new_public_limit: 0,
+        });
+        assert_eq!(c.owner_address(), a);
+    }
+
+    #[test]
+    fn needs_fee_limit_only_for_smart_contracts() {
+        let a = addr();
+
+        // Native contracts do NOT need fee_limit.
+        assert!(
+            !ContractType::ProposalCreate(ProposalCreateContract {
+                owner_address: a,
+                parameters: Default::default(),
+            })
+            .needs_fee_limit()
+        );
+        assert!(
+            !ContractType::CreateWitness(CreateWitnessContract {
+                owner_address: a,
+                url: String::new(),
+            })
+            .needs_fee_limit()
+        );
+        assert!(
+            !ContractType::UpdateBrokerage(UpdateBrokerageContract {
+                owner_address: a,
+                brokerage: 20,
+            })
+            .needs_fee_limit()
+        );
+        assert!(
+            !ContractType::ClearContractAbi(ClearContractAbiContract {
+                owner_address: a,
+                contract_address: a,
+            })
+            .needs_fee_limit()
+        );
+        assert!(
+            !ContractType::UpdateSetting(UpdateSettingContract {
+                owner_address: a,
+                contract_address: a,
+                consume_user_resource_percent: 0,
+            })
+            .needs_fee_limit()
+        );
+        assert!(
+            !ContractType::UpdateEnergyLimit(UpdateEnergyLimitContract {
+                owner_address: a,
+                contract_address: a,
+                origin_energy_limit: 0,
+            })
+            .needs_fee_limit()
+        );
+    }
 }
 
 /// Metadata about a deployed smart contract.

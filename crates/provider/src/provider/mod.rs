@@ -10,18 +10,20 @@ use std::collections::HashMap;
 pub use builder::{FilledProvider, ProviderBuilder};
 pub use pending::PendingTransaction;
 pub use root::RootProvider;
-use tronz_primitives::{Address, ResourceCode, Trx, TxId};
+use tronz_primitives::{Address, B256, ResourceCode, Trx, TxId};
 
 use crate::{
     builders::{
-        AccountPermissionUpdateBuilder, CancelAllUnfreezeBuilder, CreateAccountBuilder,
-        DelegateBuilder, FreezeBuilder, TransferBuilder, UndelegateBuilder, UnfreezeBuilder,
-        UpdateAccountBuilder, VoteBuilder, WithdrawBalanceBuilder, WithdrawExpireBuilder,
+        AccountPermissionUpdateBuilder, CancelAllUnfreezeBuilder, ClearContractAbiBuilder,
+        CreateAccountBuilder, DelegateBuilder, FreezeBuilder, SetAccountIdBuilder, TransferBuilder,
+        UndelegateBuilder, UnfreezeBuilder, UpdateAccountBuilder, UpdateContractEnergyLimitBuilder,
+        UpdateContractSettingBuilder, VoteBuilder, WithdrawBalanceBuilder, WithdrawExpireBuilder,
     },
     error::Result,
     transport::TronTransport,
     types::{
-        AccountInfo, AccountResource, BlockInfo, DelegatedResource, DelegatedResourceIndex,
+        AccountInfo, AccountNet, AccountResource, BlockInfo, ChainProperties, DelegatedResource,
+        DelegatedResourceIndex, NodeAddress, NodeInfo, RawTransaction, SignWeight,
         SignedTransaction, SmartContractInfo, TransactionInfo, TransactionRequest,
         TriggerSmartContract, WitnessInfo,
     },
@@ -99,6 +101,112 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
 
     /// List all super representatives and candidates.
     fn list_witnesses(&self) -> impl Future<Output = Result<Vec<WitnessInfo>>> + Send;
+
+    // ---------- New pure query methods ----------
+
+    /// Fetch the bandwidth price schedule string.
+    fn get_bandwidth_prices(&self) -> impl Future<Output = Result<String>> + Send;
+
+    /// Fetch the energy price schedule string.
+    fn get_energy_prices(&self) -> impl Future<Output = Result<String>> + Send;
+
+    /// Fetch the memo fee schedule.
+    fn get_memo_fee(&self) -> impl Future<Output = Result<u64>> + Send;
+
+    /// Fetch the next maintenance time (unix ms).
+    fn get_next_maintenance_time(&self) -> impl Future<Output = Result<i64>> + Send;
+
+    /// Fetch the total amount of TRX burned.
+    fn get_burn_trx(&self) -> impl Future<Output = Result<u64>> + Send;
+
+    /// Fetch the total number of transactions ever processed.
+    fn get_total_transactions(&self) -> impl Future<Output = Result<u64>> + Send;
+
+    /// Fetch basic info about the connected node.
+    fn get_node_info(&self) -> impl Future<Output = Result<NodeInfo>> + Send;
+
+    /// List known gossip-network peer addresses.
+    fn list_nodes(&self) -> impl Future<Output = Result<Vec<NodeAddress>>> + Send;
+
+    /// Fetch dynamic chain properties.
+    fn get_dynamic_properties(&self) -> impl Future<Output = Result<ChainProperties>> + Send;
+
+    /// Fetch a block by its hash.
+    fn get_block_by_id(&self, block_id: B256) -> impl Future<Output = Result<BlockInfo>> + Send;
+
+    /// Fetch the `count` most recent blocks.
+    fn get_blocks_by_latest_num(
+        &self,
+        count: i64,
+    ) -> impl Future<Output = Result<Vec<BlockInfo>>> + Send;
+
+    /// Fetch blocks in the range `[start, end)`.
+    fn get_blocks_by_limit(
+        &self,
+        start: i64,
+        end: i64,
+    ) -> impl Future<Output = Result<Vec<BlockInfo>>> + Send;
+
+    /// Count transactions in a block by block number.
+    fn get_transaction_count_by_block_num(
+        &self,
+        block_num: i64,
+    ) -> impl Future<Output = Result<u64>> + Send;
+
+    /// Fetch paginated transactions sent *from* an address.
+    fn get_transactions_from(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> impl Future<Output = Result<Vec<RawTransaction>>> + Send;
+
+    /// Fetch paginated transactions sent *to* an address.
+    fn get_transactions_to(
+        &self,
+        address: Address,
+        offset: i64,
+        limit: i64,
+    ) -> impl Future<Output = Result<Vec<RawTransaction>>> + Send;
+
+    /// Fetch transaction infos for all transactions in a block.
+    fn get_transaction_info_by_block_num(
+        &self,
+        block_num: i64,
+    ) -> impl Future<Output = Result<Vec<TransactionInfo>>> + Send;
+
+    /// Fetch the number of pending transactions.
+    fn get_pending_size(&self) -> impl Future<Output = Result<u64>> + Send;
+
+    /// Fetch a single pending transaction by id.
+    fn get_transaction_from_pending(
+        &self,
+        tx_id: TxId,
+    ) -> impl Future<Output = Result<RawTransaction>> + Send;
+
+    /// Fetch all pending transactions.
+    fn get_pending_transactions(&self) -> impl Future<Output = Result<Vec<RawTransaction>>> + Send;
+
+    /// Query sign-weight for a transaction.
+    fn get_transaction_sign_weight(
+        &self,
+        tx: &RawTransaction,
+    ) -> impl Future<Output = Result<SignWeight>> + Send;
+
+    /// Fetch addresses that have already signed a transaction.
+    fn get_transaction_approved_list(
+        &self,
+        tx: &RawTransaction,
+    ) -> impl Future<Output = Result<Vec<Address>>> + Send;
+
+    /// Fetch bandwidth/energy net-usage for an account.
+    fn get_account_net(&self, address: Address) -> impl Future<Output = Result<AccountNet>> + Send;
+
+    /// Fetch the brokerage ratio for a super representative.
+    fn get_brokerage(&self, address: Address) -> impl Future<Output = Result<u64>> + Send;
+
+    /// Fetch the unclaimed reward (raw sun) for an address.
+    fn get_reward_info(&self, address: Address) -> impl Future<Output = Result<u64>> + Send;
 
     // ---------- Transaction builders (lazy — no I/O until `.send()`) ----------
 
@@ -225,6 +333,46 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
         Self: Sized,
     {
         UpdateAccountBuilder::new(self)
+    }
+
+    /// Set a short alphanumeric on-chain account ID (alias).
+    ///
+    /// Can only be done once per account. The ID must be unique network-wide.
+    fn set_account_id(&self) -> SetAccountIdBuilder<'_, Self>
+    where
+        Self: Sized,
+    {
+        SetAccountIdBuilder::new(self)
+    }
+
+    /// Clear the ABI of a deployed smart contract.
+    ///
+    /// Only the contract owner can call this.
+    fn clear_contract_abi(&self) -> ClearContractAbiBuilder<'_, Self>
+    where
+        Self: Sized,
+    {
+        ClearContractAbiBuilder::new(self)
+    }
+
+    /// Update the caller-energy-percentage setting on a smart contract.
+    ///
+    /// Only the contract owner can call this.
+    fn update_contract_setting(&self) -> UpdateContractSettingBuilder<'_, Self>
+    where
+        Self: Sized,
+    {
+        UpdateContractSettingBuilder::new(self)
+    }
+
+    /// Update the per-call origin energy limit on a smart contract.
+    ///
+    /// Only the contract owner can call this.
+    fn update_contract_energy_limit(&self) -> UpdateContractEnergyLimitBuilder<'_, Self>
+    where
+        Self: Sized,
+    {
+        UpdateContractEnergyLimitBuilder::new(self)
     }
 
     /// Estimate the energy a contract call would consume.

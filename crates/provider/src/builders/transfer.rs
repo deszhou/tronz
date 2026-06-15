@@ -2,6 +2,7 @@
 
 use tronz_primitives::{Address, Trx};
 
+use super::resolve_owner;
 use crate::{
     error::{Error, Result},
     provider::{PendingTransaction, TronProvider},
@@ -55,10 +56,7 @@ impl<'a, P: TronProvider> TransferBuilder<'a, P> {
 
     /// Build, sign, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
         let to = self.to.ok_or(Error::MissingField("to"))?;
         let amount = self.amount.ok_or(Error::MissingField("amount"))?;
 

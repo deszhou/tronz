@@ -5,12 +5,13 @@
 use tronz_primitives::Address;
 
 use crate::{
+    builders::resolve_owner,
     error::{Error, Result},
     provider::{PendingTransaction, TronProvider},
     transport::TronTransport as _,
     types::{
-        AssetInfo, AssetIssueContract, ContractType, FrozenSupply, TransactionRequest,
-        TransferAssetContract,
+        AssetInfo, AssetIssueContract, ContractType, FrozenSupply, ParticipateAssetIssueContract,
+        TransactionRequest, TransferAssetContract, UnfreezeAssetContract, UpdateAssetContract,
     },
 };
 
@@ -72,6 +73,22 @@ pub trait Trc10Api: TronProvider + Sized {
         limit: i64,
     ) -> impl std::future::Future<Output = Result<Vec<AssetInfo>>> + Send;
 
+    /// Fetch a TRC10 token by name.
+    ///
+    /// Token names are not unique after the `ALLOW_SAME_TOKEN_NAME` proposal.
+    /// Use [`get_asset_issue_list_by_name`](Trc10Api::get_asset_issue_list_by_name) when
+    /// multiple tokens may share the same name.
+    fn get_asset_issue_by_name(
+        &self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<AssetInfo>> + Send;
+
+    /// Fetch all TRC10 tokens with a given name.
+    fn get_asset_issue_list_by_name(
+        &self,
+        name: &str,
+    ) -> impl std::future::Future<Output = Result<Vec<AssetInfo>>> + Send;
+
     /// Start building a TRC10 token transfer.
     fn transfer_trc10(&self) -> TransferTrc10Builder<'_, Self>;
 
@@ -95,6 +112,15 @@ pub trait Trc10Api: TronProvider + Sized {
     /// # Ok(()) }
     /// ```
     fn issue_trc10(&self) -> IssueTrc10Builder<'_, Self>;
+
+    /// Start building a TRC10 ICO participation (buy tokens with TRX).
+    fn participate_trc10(&self) -> ParticipateTrc10Builder<'_, Self>;
+
+    /// Start building a frozen-supply release for a TRC10 token.
+    fn unfreeze_trc10(&self) -> UnfreezeTrc10Builder<'_, Self>;
+
+    /// Start building a TRC10 token metadata update.
+    fn update_trc10(&self) -> UpdateTrc10Builder<'_, Self>;
 }
 
 impl<P: TronProvider> Trc10Api for P {
@@ -124,12 +150,38 @@ impl<P: TronProvider> Trc10Api for P {
         Ok(account.trc10_balances.get(token_id).copied().unwrap_or(0))
     }
 
+    async fn get_asset_issue_by_name(&self, name: &str) -> Result<AssetInfo> {
+        self.transport()
+            .get_asset_issue_by_name(name)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_asset_issue_list_by_name(&self, name: &str) -> Result<Vec<AssetInfo>> {
+        self.transport()
+            .get_asset_issue_list_by_name(name)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
     fn transfer_trc10(&self) -> TransferTrc10Builder<'_, Self> {
         TransferTrc10Builder::new(self)
     }
 
     fn issue_trc10(&self) -> IssueTrc10Builder<'_, Self> {
         IssueTrc10Builder::new(self)
+    }
+
+    fn participate_trc10(&self) -> ParticipateTrc10Builder<'_, Self> {
+        ParticipateTrc10Builder::new(self)
+    }
+
+    fn unfreeze_trc10(&self) -> UnfreezeTrc10Builder<'_, Self> {
+        UnfreezeTrc10Builder::new(self)
+    }
+
+    fn update_trc10(&self) -> UpdateTrc10Builder<'_, Self> {
+        UpdateTrc10Builder::new(self)
     }
 }
 
@@ -191,10 +243,7 @@ impl<'a, P: TronProvider> TransferTrc10Builder<'a, P> {
 
     /// Build, sign, and broadcast the transfer.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
         let to = self.to.ok_or(Error::MissingField("to"))?;
         let token_id = self.token_id.ok_or(Error::MissingField("token_id"))?;
         let amount = self.amount.ok_or(Error::MissingField("amount"))?;
@@ -346,10 +395,7 @@ impl<'a, P: TronProvider> IssueTrc10Builder<'a, P> {
 
     /// Build, sign, and broadcast the token issuance.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
         let name = self.name.ok_or(Error::MissingField("name"))?;
         let abbr = self.abbr.ok_or(Error::MissingField("abbr"))?;
         let url = self.url.ok_or(Error::MissingField("url"))?;
@@ -381,6 +427,216 @@ impl<'a, P: TronProvider> IssueTrc10Builder<'a, P> {
                 public_free_asset_net_limit: self.public_free_asset_net_limit,
                 frozen_supply: self.frozen_supply,
             })),
+            ..Default::default()
+        };
+        self.provider.send_transaction(req).await
+    }
+}
+
+// ── ParticipateTrc10Builder ───────────────────────────────────────────────────
+
+/// Builds a TRC10 ICO participation transaction.
+///
+/// Created by [`Trc10Api::participate_trc10`].
+pub struct ParticipateTrc10Builder<'a, P> {
+    provider: &'a P,
+    owner: Option<Address>,
+    to: Option<Address>,
+    token_id: Option<String>,
+    amount: Option<i64>,
+    memo: Option<Vec<u8>>,
+}
+
+impl<'a, P: TronProvider> ParticipateTrc10Builder<'a, P> {
+    pub(crate) fn new(provider: &'a P) -> Self {
+        Self {
+            provider,
+            owner: None,
+            to: None,
+            token_id: None,
+            amount: None,
+            memo: None,
+        }
+    }
+
+    /// Override the buyer address (defaults to the provider's signer address).
+    pub fn owner(mut self, owner: Address) -> Self {
+        self.owner = Some(owner);
+        self
+    }
+
+    /// Set the issuer / ICO address.
+    pub fn to(mut self, to: Address) -> Self {
+        self.to = Some(to);
+        self
+    }
+
+    /// Set the numeric token ID (e.g. `"1000001"`).
+    pub fn token_id(mut self, id: impl Into<String>) -> Self {
+        self.token_id = Some(id.into());
+        self
+    }
+
+    /// Set the amount of TRX in sun to spend.
+    pub fn amount_sun(mut self, sun: i64) -> Self {
+        self.amount = Some(sun);
+        self
+    }
+
+    /// Attach a memo.
+    pub fn memo(mut self, memo: impl Into<Vec<u8>>) -> Self {
+        self.memo = Some(memo.into());
+        self
+    }
+
+    /// Build, sign, and broadcast the participation.
+    pub async fn send(self) -> Result<PendingTransaction<P>> {
+        let owner = resolve_owner(self.owner, self.provider)?;
+        let to = self.to.ok_or(Error::MissingField("to"))?;
+        let token_id = self.token_id.ok_or(Error::MissingField("token_id"))?;
+        let amount = self.amount.ok_or(Error::MissingField("amount"))?;
+
+        let req = TransactionRequest {
+            contract: Some(ContractType::ParticipateAssetIssue(
+                ParticipateAssetIssueContract {
+                    owner_address: owner,
+                    to_address: to,
+                    token_id,
+                    amount,
+                },
+            )),
+            memo: self.memo,
+            ..Default::default()
+        };
+        self.provider.send_transaction(req).await
+    }
+}
+
+// ── UnfreezeTrc10Builder ──────────────────────────────────────────────────────
+
+/// Builds an unfreeze-asset transaction (releases frozen TRC10 supply).
+///
+/// Created by [`Trc10Api::unfreeze_trc10`].
+pub struct UnfreezeTrc10Builder<'a, P> {
+    provider: &'a P,
+    owner: Option<Address>,
+    memo: Option<Vec<u8>>,
+}
+
+impl<'a, P: TronProvider> UnfreezeTrc10Builder<'a, P> {
+    pub(crate) fn new(provider: &'a P) -> Self {
+        Self {
+            provider,
+            owner: None,
+            memo: None,
+        }
+    }
+
+    /// Override the issuer address (defaults to the provider's signer address).
+    pub fn owner(mut self, owner: Address) -> Self {
+        self.owner = Some(owner);
+        self
+    }
+
+    /// Attach a memo.
+    pub fn memo(mut self, memo: impl Into<Vec<u8>>) -> Self {
+        self.memo = Some(memo.into());
+        self
+    }
+
+    /// Build, sign, and broadcast the unfreeze.
+    pub async fn send(self) -> Result<PendingTransaction<P>> {
+        let owner = resolve_owner(self.owner, self.provider)?;
+
+        let req = TransactionRequest {
+            contract: Some(ContractType::UnfreezeAsset(UnfreezeAssetContract {
+                owner_address: owner,
+            })),
+            memo: self.memo,
+            ..Default::default()
+        };
+        self.provider.send_transaction(req).await
+    }
+}
+
+// ── UpdateTrc10Builder ────────────────────────────────────────────────────────
+
+/// Builds a TRC10 token metadata update transaction.
+///
+/// Created by [`Trc10Api::update_trc10`].
+pub struct UpdateTrc10Builder<'a, P> {
+    provider: &'a P,
+    owner: Option<Address>,
+    description: String,
+    url: Option<String>,
+    new_limit: i64,
+    new_public_limit: i64,
+    memo: Option<Vec<u8>>,
+}
+
+impl<'a, P: TronProvider> UpdateTrc10Builder<'a, P> {
+    pub(crate) fn new(provider: &'a P) -> Self {
+        Self {
+            provider,
+            owner: None,
+            description: String::new(),
+            url: None,
+            new_limit: 0,
+            new_public_limit: 0,
+            memo: None,
+        }
+    }
+
+    /// Override the issuer address (defaults to the provider's signer address).
+    pub fn owner(mut self, owner: Address) -> Self {
+        self.owner = Some(owner);
+        self
+    }
+
+    /// Set the new token description.
+    pub fn description(mut self, desc: impl Into<String>) -> Self {
+        self.description = desc.into();
+        self
+    }
+
+    /// Set the new project URL (required).
+    pub fn url(mut self, url: impl Into<String>) -> Self {
+        self.url = Some(url.into());
+        self
+    }
+
+    /// Set the new per-account free-transfer bandwidth limit.
+    pub fn new_limit(mut self, limit: i64) -> Self {
+        self.new_limit = limit;
+        self
+    }
+
+    /// Set the new total free-transfer bandwidth limit.
+    pub fn new_public_limit(mut self, limit: i64) -> Self {
+        self.new_public_limit = limit;
+        self
+    }
+
+    /// Attach a memo.
+    pub fn memo(mut self, memo: impl Into<Vec<u8>>) -> Self {
+        self.memo = Some(memo.into());
+        self
+    }
+
+    /// Build, sign, and broadcast the metadata update.
+    pub async fn send(self) -> Result<PendingTransaction<P>> {
+        let owner = resolve_owner(self.owner, self.provider)?;
+        let url = self.url.ok_or(Error::MissingField("url"))?;
+
+        let req = TransactionRequest {
+            contract: Some(ContractType::UpdateAsset(UpdateAssetContract {
+                owner_address: owner,
+                description: self.description,
+                url,
+                new_limit: self.new_limit,
+                new_public_limit: self.new_public_limit,
+            })),
+            memo: self.memo,
             ..Default::default()
         };
         self.provider.send_transaction(req).await

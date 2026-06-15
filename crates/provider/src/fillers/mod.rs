@@ -4,7 +4,7 @@
 //! Modeled on alloy's `TxFiller` / `JoinFill` pattern (see `DESIGN.md` §5.3).
 
 use core::future::Future;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 use tronz_primitives::{Address, B256, RecoverableSignature, Trx};
 use tronz_signer::{SignerError, TronSigner};
@@ -146,9 +146,13 @@ impl TxFiller for TaposFiller {
             let block = provider.get_now_block().await?;
             tx.ref_block_bytes = Some(block.ref_block_bytes());
             tx.ref_block_hash = Some(block.ref_block_hash());
-            let now_ms = unix_now_ms();
-            tx.timestamp = Some(now_ms);
-            tx.expiration = Some(now_ms + expiry.as_secs() as i64 * 1_000);
+            // Use the block's own timestamp as the baseline so that clock skew
+            // between the client and the node cannot produce an already-expired
+            // transaction (mirrors alloy's approach: chain state from provider,
+            // not from SystemTime).
+            let base_ms = block.timestamp;
+            tx.timestamp = Some(base_ms);
+            tx.expiration = Some(base_ms + expiry.as_secs() as i64 * 1_000);
             Ok(tx)
         }
     }
@@ -301,12 +305,4 @@ impl<L: HasSigner + Clone + Send, R: HasSigner + Clone + Send> HasSigner for Joi
             }
         }
     }
-}
-
-fn unix_now_ms() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .ok()
-        .and_then(|d| i64::try_from(d.as_millis()).ok())
-        .unwrap_or(0)
 }

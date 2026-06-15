@@ -1,6 +1,8 @@
 [package]
 name         = "tronz-signer"
 description  = "Signing traits and local key signer for the tronz TRON SDK."
+keywords     = ["tron", "blockchain", "cryptocurrency", "signer", "secp256k1"]
+categories   = ["cryptography::cryptocurrencies", "network-programming", "api-bindings", "asynchronous"]
 version      = { workspace = true }
 edition      = { workspace = true }
 rust-version = { workspace = true }

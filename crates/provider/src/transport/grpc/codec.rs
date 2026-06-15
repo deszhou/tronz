@@ -10,16 +10,32 @@ use crate::{
     proto,
     types::{
         AccountInfo, AccountPermissionUpdateContract, AccountPermissions, AccountResource,
-        AssetInfo, AssetIssueContract, BlockInfo, ConstantCallResult, ContractResult,
-        CreateAccountContract, CreateSmartContract, DelegatedResource, DelegatedResourceIndex,
-        FreezeV2, Log, Permission, PermissionKey, RawTransaction, SignedTransaction,
-        SmartContractInfo, TransactionInfo, TransferAssetContract, TransferContract,
-        TriggerSmartContract, TxStatus, UnfreezeV2, UpdateAccountContract, Vote,
+        AssetInfo, AssetIssueContract, BlockInfo, ClearContractAbiContract, ConstantCallResult,
+        ContractResult, CreateAccountContract, CreateSmartContract, CreateWitnessContract,
+        DelegatedResource, DelegatedResourceIndex, FreezeV2, Log, ParticipateAssetIssueContract,
+        Permission, PermissionKey, ProposalApproveContract, ProposalCreateContract,
+        ProposalDeleteContract, ProposalInfo, ProposalState, RawTransaction, SetAccountIdContract,
+        SignWeight, SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract,
+        TransferContract, TriggerSmartContract, TxStatus, UnfreezeAssetContract, UnfreezeV2,
+        UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract,
+        UpdateEnergyLimitContract, UpdateSettingContract, UpdateWitnessContract, Vote,
         VoteWitnessContract, WitnessInfo,
     },
 };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
+
+/// Serialize a domain `Address` to the proto wire format (21-byte vec).
+#[inline]
+fn addr_bytes(a: Address) -> Vec<u8> {
+    a.as_bytes().to_vec()
+}
+
+/// Serialize a Rust `String` to proto bytes (UTF-8, no NUL terminator).
+#[inline]
+fn str_bytes(s: String) -> Vec<u8> {
+    s.into_bytes()
+}
 
 fn addr(bytes: Vec<u8>) -> Result<Address, TransportError> {
     Address::from_slice(&bytes).map_err(|e| TransportError::Malformed(format!("bad address: {e}")))
@@ -299,8 +315,8 @@ pub(super) fn trigger_smart_contract_to_proto(
     p: TriggerSmartContract,
 ) -> proto::TriggerSmartContract {
     proto::TriggerSmartContract {
-        owner_address: p.owner_address.as_bytes().to_vec(),
-        contract_address: p.contract_address.as_bytes().to_vec(),
+        owner_address: addr_bytes(p.owner_address),
+        contract_address: addr_bytes(p.contract_address),
         call_value: p.call_value.as_sun(),
         data: p.data.to_vec(),
         call_token_value: p.call_token_value.as_sun(),
@@ -460,8 +476,8 @@ pub(super) fn delegated_resource_from_proto(
 
 pub(super) fn transfer_to_proto(p: TransferContract) -> proto::TransferContract {
     proto::TransferContract {
-        owner_address: p.owner_address.as_bytes().to_vec(),
-        to_address: p.to_address.as_bytes().to_vec(),
+        owner_address: addr_bytes(p.owner_address),
+        to_address: addr_bytes(p.to_address),
         amount: p.amount.as_sun(),
     }
 }
@@ -479,7 +495,7 @@ fn permission_to_proto(p: Permission) -> proto::Permission {
             .keys
             .into_iter()
             .map(|k| proto::Key {
-                address: k.address.as_bytes().to_vec(),
+                address: addr_bytes(k.address),
                 weight: k.weight,
             })
             .collect(),
@@ -543,7 +559,7 @@ pub(super) fn account_permission_update_to_proto(
         .collect();
 
     proto::AccountPermissionUpdateContract {
-        owner_address: p.owner_address.as_bytes().to_vec(),
+        owner_address: addr_bytes(p.owner_address),
         owner,
         witness,
         actives,
@@ -552,9 +568,9 @@ pub(super) fn account_permission_update_to_proto(
 
 pub(super) fn create_smart_contract_to_proto(p: CreateSmartContract) -> proto::CreateSmartContract {
     proto::CreateSmartContract {
-        owner_address: p.owner_address.as_bytes().to_vec(),
+        owner_address: addr_bytes(p.owner_address),
         new_contract: Some(proto::SmartContract {
-            origin_address: p.owner_address.as_bytes().to_vec(),
+            origin_address: addr_bytes(p.owner_address),
             contract_address: vec![],
             abi: None,
             bytecode: p.bytecode.to_vec(),
@@ -575,11 +591,11 @@ pub(super) fn create_smart_contract_to_proto(p: CreateSmartContract) -> proto::C
 
 pub(super) fn asset_issue_to_proto(p: AssetIssueContract) -> proto::AssetIssueContract {
     proto::AssetIssueContract {
-        owner_address: p.owner_address.as_bytes().to_vec(),
-        name: p.name.into_bytes(),
-        abbr: p.abbr.into_bytes(),
-        description: p.description.into_bytes(),
-        url: p.url.into_bytes(),
+        owner_address: addr_bytes(p.owner_address),
+        name: str_bytes(p.name),
+        abbr: str_bytes(p.abbr),
+        description: str_bytes(p.description),
+        url: str_bytes(p.url),
         total_supply: p.total_supply,
         precision: p.precision,
         trx_num: p.trx_num,
@@ -603,29 +619,57 @@ pub(super) fn asset_issue_to_proto(p: AssetIssueContract) -> proto::AssetIssueCo
 pub(super) fn transfer_asset_to_proto(p: TransferAssetContract) -> proto::TransferAssetContract {
     proto::TransferAssetContract {
         // After the ALLOW_SAME_TOKEN_NAME proposal, asset_name holds the numeric ID as bytes.
-        asset_name: p.token_id.into_bytes(),
-        owner_address: p.owner_address.as_bytes().to_vec(),
-        to_address: p.to_address.as_bytes().to_vec(),
+        asset_name: str_bytes(p.token_id),
+        owner_address: addr_bytes(p.owner_address),
+        to_address: addr_bytes(p.to_address),
         amount: p.amount,
+    }
+}
+
+pub(super) fn participate_asset_issue_to_proto(
+    p: ParticipateAssetIssueContract,
+) -> proto::ParticipateAssetIssueContract {
+    proto::ParticipateAssetIssueContract {
+        owner_address: addr_bytes(p.owner_address),
+        to_address: addr_bytes(p.to_address),
+        // After ALLOW_SAME_TOKEN_NAME the asset_name field holds the numeric ID as bytes.
+        asset_name: str_bytes(p.token_id),
+        amount: p.amount,
+    }
+}
+
+pub(super) fn unfreeze_asset_to_proto(p: UnfreezeAssetContract) -> proto::UnfreezeAssetContract {
+    proto::UnfreezeAssetContract {
+        owner_address: addr_bytes(p.owner_address),
+    }
+}
+
+pub(super) fn update_asset_to_proto(p: UpdateAssetContract) -> proto::UpdateAssetContract {
+    proto::UpdateAssetContract {
+        owner_address: addr_bytes(p.owner_address),
+        description: str_bytes(p.description),
+        url: str_bytes(p.url),
+        new_limit: p.new_limit,
+        new_public_limit: p.new_public_limit,
     }
 }
 
 pub(super) fn create_account_to_proto(p: CreateAccountContract) -> proto::AccountCreateContract {
     proto::AccountCreateContract {
-        owner_address: p.owner_address.as_bytes().to_vec(),
-        account_address: p.account_address.as_bytes().to_vec(),
+        owner_address: addr_bytes(p.owner_address),
+        account_address: addr_bytes(p.account_address),
         r#type: 0, // Normal account
     }
 }
 
 pub(super) fn vote_witness_to_proto(p: VoteWitnessContract) -> proto::VoteWitnessContract {
     proto::VoteWitnessContract {
-        owner_address: p.owner_address.as_bytes().to_vec(),
+        owner_address: addr_bytes(p.owner_address),
         votes: p
             .votes
             .into_iter()
             .map(|v| proto::vote_witness_contract::Vote {
-                vote_address: v.vote_address.as_bytes().to_vec(),
+                vote_address: addr_bytes(v.vote_address),
                 vote_count: v.vote_count,
             })
             .collect(),
@@ -635,8 +679,8 @@ pub(super) fn vote_witness_to_proto(p: VoteWitnessContract) -> proto::VoteWitnes
 
 pub(super) fn update_account_to_proto(p: UpdateAccountContract) -> proto::AccountUpdateContract {
     proto::AccountUpdateContract {
-        account_name: p.name.into_bytes(),
-        owner_address: p.owner_address.as_bytes().to_vec(),
+        account_name: str_bytes(p.name),
+        owner_address: addr_bytes(p.owner_address),
     }
 }
 
@@ -674,5 +718,193 @@ pub(super) fn delegated_resource_index_from_proto(
             .into_iter()
             .filter_map(|b| addr(b).ok())
             .collect(),
+    })
+}
+
+// ── Governance ────────────────────────────────────────────────────────────────
+
+pub(super) fn proposal_create_to_proto(p: ProposalCreateContract) -> proto::ProposalCreateContract {
+    proto::ProposalCreateContract {
+        owner_address: addr_bytes(p.owner_address),
+        parameters: p.parameters,
+    }
+}
+
+pub(super) fn proposal_approve_to_proto(
+    p: ProposalApproveContract,
+) -> proto::ProposalApproveContract {
+    proto::ProposalApproveContract {
+        owner_address: addr_bytes(p.owner_address),
+        proposal_id: p.proposal_id,
+        is_add_approval: p.is_add_approval,
+    }
+}
+
+pub(super) fn proposal_delete_to_proto(p: ProposalDeleteContract) -> proto::ProposalDeleteContract {
+    proto::ProposalDeleteContract {
+        owner_address: addr_bytes(p.owner_address),
+        proposal_id: p.proposal_id,
+    }
+}
+
+pub(super) fn proposal_from_proto(p: proto::Proposal) -> ProposalInfo {
+    let proposer_address = if p.proposer_address.is_empty() {
+        None
+    } else {
+        Address::from_slice(&p.proposer_address).ok()
+    };
+    let approvals = p
+        .approvals
+        .into_iter()
+        .filter_map(|b| Address::from_slice(&b).ok())
+        .collect();
+    ProposalInfo {
+        proposal_id: p.proposal_id,
+        proposer_address,
+        parameters: p.parameters,
+        expiration_time: p.expiration_time,
+        create_time: p.create_time,
+        approvals,
+        state: ProposalState::from(p.state),
+    }
+}
+
+// ── Witness ───────────────────────────────────────────────────────────────────
+
+pub(super) fn create_witness_to_proto(p: CreateWitnessContract) -> proto::WitnessCreateContract {
+    proto::WitnessCreateContract {
+        owner_address: addr_bytes(p.owner_address),
+        url: str_bytes(p.url),
+    }
+}
+
+pub(super) fn update_witness_to_proto(p: UpdateWitnessContract) -> proto::WitnessUpdateContract {
+    proto::WitnessUpdateContract {
+        owner_address: addr_bytes(p.owner_address),
+        update_url: str_bytes(p.update_url),
+    }
+}
+
+pub(super) fn update_brokerage_to_proto(
+    p: UpdateBrokerageContract,
+) -> proto::UpdateBrokerageContract {
+    proto::UpdateBrokerageContract {
+        owner_address: addr_bytes(p.owner_address),
+        brokerage: p.brokerage,
+    }
+}
+
+// ── Smart contract management ─────────────────────────────────────────────────
+
+pub(super) fn set_account_id_to_proto(p: SetAccountIdContract) -> proto::SetAccountIdContract {
+    proto::SetAccountIdContract {
+        account_id: str_bytes(p.account_id),
+        owner_address: addr_bytes(p.owner_address),
+    }
+}
+
+pub(super) fn clear_contract_abi_to_proto(p: ClearContractAbiContract) -> proto::ClearAbiContract {
+    proto::ClearAbiContract {
+        owner_address: addr_bytes(p.owner_address),
+        contract_address: addr_bytes(p.contract_address),
+    }
+}
+
+pub(super) fn update_setting_to_proto(p: UpdateSettingContract) -> proto::UpdateSettingContract {
+    proto::UpdateSettingContract {
+        owner_address: addr_bytes(p.owner_address),
+        contract_address: addr_bytes(p.contract_address),
+        consume_user_resource_percent: p.consume_user_resource_percent,
+    }
+}
+
+pub(super) fn update_energy_limit_to_proto(
+    p: UpdateEnergyLimitContract,
+) -> proto::UpdateEnergyLimitContract {
+    proto::UpdateEnergyLimitContract {
+        owner_address: addr_bytes(p.owner_address),
+        contract_address: addr_bytes(p.contract_address),
+        origin_energy_limit: p.origin_energy_limit,
+    }
+}
+
+// ── Block (plain, non-extention) ───────────────────────────────────────────────
+
+/// Convert a plain `Block` proto (returned by `GetBlockById`, etc.) into `BlockInfo`.
+pub(super) fn block_from_plain(block: proto::Block) -> Result<BlockInfo, TransportError> {
+    let header = block
+        .block_header
+        .ok_or_else(|| TransportError::Malformed("missing block_header".into()))?;
+    let raw = header
+        .raw_data
+        .ok_or_else(|| TransportError::Malformed("missing block_header.raw_data".into()))?;
+
+    // For plain Block the block id isn't included — derive it from the header bytes.
+    use prost::Message as _;
+    use sha2::{Digest, Sha256};
+    let header_bytes = raw.encode_to_vec();
+    let hash_bytes: [u8; 32] = Sha256::digest(&header_bytes).into();
+    // Embed the block number in the first 8 bytes (TRON convention).
+    let mut block_id = hash_bytes;
+    let num_be = raw.number.to_be_bytes();
+    block_id[0..8].copy_from_slice(&num_be);
+
+    Ok(BlockInfo {
+        number: raw.number,
+        hash: B256::from(block_id),
+        timestamp: raw.timestamp,
+    })
+}
+
+// ── Raw transaction from plain Transaction proto ───────────────────────────────
+
+/// Convert a plain `Transaction` proto into a `RawTransaction`.
+pub(super) fn raw_from_plain(tx: proto::Transaction) -> Result<RawTransaction, TransportError> {
+    use prost::Message as _;
+    use sha2::{Digest, Sha256};
+
+    let (expiration, timestamp) = tx
+        .raw_data
+        .as_ref()
+        .map(|r| (r.expiration, r.timestamp))
+        .unwrap_or((0, 0));
+
+    let tx_id_bytes: [u8; 32] = if let Some(ref raw) = tx.raw_data {
+        Sha256::digest(raw.encode_to_vec()).into()
+    } else {
+        [0u8; 32]
+    };
+
+    let raw_proto = tx.encode_to_vec();
+    RawTransaction::from_proto_extention(tx_id_bytes.to_vec(), raw_proto, expiration, timestamp)
+}
+
+// ── Multi-sig ─────────────────────────────────────────────────────────────────
+
+pub(super) fn sign_weight_from_proto(
+    w: proto::TransactionSignWeight,
+) -> Result<SignWeight, TransportError> {
+    let approved_list = w
+        .approved_list
+        .into_iter()
+        .map(|bytes| {
+            Address::from_slice(&bytes)
+                .map_err(|e| TransportError::Malformed(format!("bad address: {e}")))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let required_weight = w.permission.as_ref().map(|p| p.threshold).unwrap_or(0);
+
+    let result = w
+        .result
+        .as_ref()
+        .map(|r| r.message.clone())
+        .unwrap_or_default();
+
+    Ok(SignWeight {
+        approved_list,
+        current_weight: w.current_weight,
+        required_weight,
+        result,
     })
 }

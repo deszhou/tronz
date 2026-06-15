@@ -2,8 +2,9 @@
 
 use tronz_primitives::Address;
 
+use super::resolve_owner;
 use crate::{
-    error::{Error, Result},
+    error::Result,
     provider::{PendingTransaction, TronProvider},
     types::{ContractType, SrVote, TransactionRequest, VoteWitnessContract},
 };
@@ -79,10 +80,7 @@ impl<'a, P: TronProvider> VoteBuilder<'a, P> {
 
     /// Build, sign, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
-        let owner = self
-            .owner
-            .or_else(|| self.provider.signer_address())
-            .ok_or(Error::NoSigner)?;
+        let owner = resolve_owner(self.owner, self.provider)?;
 
         let req = TransactionRequest {
             contract: Some(ContractType::VoteWitness(VoteWitnessContract {
