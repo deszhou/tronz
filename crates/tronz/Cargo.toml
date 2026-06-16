@@ -27,4 +27,8 @@ provider-grpc     = ["tronz-provider/grpc"]
 contract = ["dep:tronz-contract"]
 # LocalSigner is always compiled in tronz-signer; this is a documentation flag.
 signer-local = []
+# BIP-39 mnemonic + BIP-44 HD key derivation.
+signer-mnemonic = ["tronz-signer/mnemonic"]
+# Web3 Secret Storage V3 keystore.
+signer-keystore = ["tronz-signer/keystore"]
 

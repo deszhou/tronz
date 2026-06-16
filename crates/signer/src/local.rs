@@ -37,6 +37,44 @@ impl LocalSigner {
     pub fn signing_key(&self) -> &SigningKey {
         &self.key
     }
+
+    /// Encrypt this signer's private key as a Web3 Secret Storage V3 keystore
+    /// file and write it to `dir`.
+    ///
+    /// The file is named `<uuid>.json` and uses standard scrypt parameters
+    /// (N = 262 144). Returns the path of the written file.
+    ///
+    /// Requires the `keystore` feature.
+    #[cfg(feature = "keystore")]
+    pub fn encrypt_keystore<P: AsRef<std::path::Path>>(
+        &self,
+        dir: P,
+        password: &str,
+    ) -> Result<std::path::PathBuf, crate::SignerError> {
+        let key_bytes: [u8; 32] = self.key.to_bytes().into();
+        crate::keystore::encrypt_to_file(
+            &key_bytes,
+            &self.address.to_string(),
+            password,
+            dir,
+            &mut rand::thread_rng(),
+        )
+    }
+
+    /// Load and decrypt a keystore file created by [`encrypt_keystore`].
+    ///
+    /// Returns [`crate::keystore::KeystoreError::InvalidPassword`] if the
+    /// password is wrong.
+    ///
+    /// Requires the `keystore` feature.
+    #[cfg(feature = "keystore")]
+    pub fn decrypt_keystore<P: AsRef<std::path::Path>>(
+        path: P,
+        password: &str,
+    ) -> Result<Self, crate::SignerError> {
+        let key_bytes = crate::keystore::decrypt_from_file(path, password)?;
+        Self::from_bytes(&key_bytes)
+    }
 }
 
 impl core::fmt::Debug for LocalSigner {

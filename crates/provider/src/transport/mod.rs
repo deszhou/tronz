@@ -12,14 +12,15 @@ use crate::types::{
     AccountInfo, AccountNet, AccountPermissionUpdateContract, AccountResource, AssetInfo,
     AssetIssueContract, BlockInfo, ChainProperties, ClearContractAbiContract, ConstantCallResult,
     CreateAccountContract, CreateSmartContract, CreateWitnessContract, DelegatedResource,
-    DelegatedResourceIndex, FreezeBalanceV2Contract, NodeAddress, NodeInfo,
-    ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract,
+    DelegatedResourceIndex, FreezeBalanceV1Contract, FreezeBalanceV2Contract, NodeAddress,
+    NodeInfo, ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract,
     ProposalDeleteContract, ProposalInfo, RawTransaction, SetAccountIdContract, SignWeight,
     SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract, TransferContract,
     TriggerSmartContract, UnDelegateResourceContract, UnfreezeAssetContract,
-    UnfreezeBalanceV2Contract, UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract,
-    UpdateEnergyLimitContract, UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract,
-    WithdrawBalanceContract, WithdrawExpireUnfreezeContract, WitnessInfo,
+    UnfreezeBalanceV1Contract, UnfreezeBalanceV2Contract, UpdateAccountContract,
+    UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract, UpdateSettingContract,
+    UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
+    WithdrawExpireUnfreezeContract, WitnessInfo,
 };
 
 pub mod grpc;
@@ -122,6 +123,18 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
 
     // --- Staking ---
 
+    /// Build a freeze (stake) transaction (Stake 1.0, legacy).
+    fn freeze_balance_v1(
+        &self,
+        params: FreezeBalanceV1Contract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Build an unfreeze (unstake) transaction (Stake 1.0, legacy).
+    fn unfreeze_balance_v1(
+        &self,
+        params: UnfreezeBalanceV1Contract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
     /// Build a freeze (stake) transaction.
     fn freeze_balance_v2(
         &self,
@@ -166,14 +179,27 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
 
     // --- Resource queries ---
 
-    /// Query delegations between two accounts.
+    /// Query delegations between two accounts (Stake 1.0, legacy).
+    fn get_delegated_resource_v1(
+        &self,
+        from: Address,
+        to: Address,
+    ) -> impl Future<Output = Result<Vec<DelegatedResource>, Self::Error>> + Send;
+
+    /// Query the full delegation index for an account (Stake 1.0, legacy).
+    fn get_delegated_resource_index_v1(
+        &self,
+        address: Address,
+    ) -> impl Future<Output = Result<DelegatedResourceIndex, Self::Error>> + Send;
+
+    /// Query delegations between two accounts (Stake 2.0).
     fn get_delegated_resource(
         &self,
         from: Address,
         to: Address,
     ) -> impl Future<Output = Result<Vec<DelegatedResource>, Self::Error>> + Send;
 
-    /// Query the full delegation index for an account.
+    /// Query the full delegation index for an account (Stake 2.0).
     fn get_delegated_resource_index(
         &self,
         address: Address,

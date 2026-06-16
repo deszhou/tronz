@@ -42,7 +42,7 @@ pub use contract::{
     UpdateContractSettingBuilder,
 };
 pub use delegate::{DelegateBuilder, UndelegateBuilder};
-pub use freeze::{FreezeBuilder, UnfreezeBuilder};
+pub use freeze::{FreezeBuilder, FreezeV1Builder, UnfreezeBuilder, UnfreezeV1Builder};
 pub use permission::AccountPermissionUpdateBuilder;
 pub use rewards::WithdrawBalanceBuilder;
 pub use transfer::TransferBuilder;

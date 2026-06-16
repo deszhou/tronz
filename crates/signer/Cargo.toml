@@ -9,11 +9,32 @@ rust-version = { workspace = true }
 license      = { workspace = true }
 repository   = { workspace = true }
 
+[features]
+## BIP-39 mnemonic + BIP-44 HD key derivation via `MnemonicBuilder`.
+mnemonic = ["dep:coins-bip32", "dep:coins-bip39", "dep:rand"]
+## Web3 Secret Storage V3 keystore encrypt/decrypt.
+keystore = ["dep:scrypt", "dep:aes", "dep:ctr", "dep:sha3", "dep:uuid", "dep:serde", "dep:serde_json", "dep:rand"]
+
 [dependencies]
 tronz-primitives = { workspace = true }
 k256             = { workspace = true }
 hex              = { workspace = true }
 thiserror        = { workspace = true }
 
+# mnemonic feature
+coins-bip32 = { workspace = true, optional = true }
+coins-bip39 = { workspace = true, optional = true }
+rand        = { workspace = true, optional = true }
+
+# keystore feature
+scrypt     = { workspace = true, optional = true }
+aes        = { workspace = true, optional = true }
+ctr        = { workspace = true, optional = true }
+sha3       = { workspace = true, optional = true }
+uuid       = { workspace = true, optional = true }
+serde      = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt", "macros"] }
+tokio    = { workspace = true, features = ["rt", "macros"] }
+tempfile = "3"

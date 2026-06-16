@@ -28,14 +28,15 @@ use crate::{
         AssetIssueContract, BlockInfo, CancelAllUnfreezeV2Contract, ChainProperties,
         ClearContractAbiContract, ConstantCallResult, CreateAccountContract, CreateSmartContract,
         CreateWitnessContract, DelegateResourceContract, DelegatedResource, DelegatedResourceIndex,
-        FreezeBalanceV2Contract, NodeAddress, NodeInfo, ParticipateAssetIssueContract,
-        ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, ProposalInfo,
-        RawTransaction, SetAccountIdContract, SignWeight, SignedTransaction, SmartContractInfo,
-        TransactionInfo, TransferAssetContract, TransferContract, TriggerSmartContract,
-        UnDelegateResourceContract, UnfreezeAssetContract, UnfreezeBalanceV2Contract,
-        UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract,
-        UpdateEnergyLimitContract, UpdateSettingContract, UpdateWitnessContract,
-        VoteWitnessContract, WithdrawBalanceContract, WithdrawExpireUnfreezeContract, WitnessInfo,
+        FreezeBalanceV1Contract, FreezeBalanceV2Contract, NodeAddress, NodeInfo,
+        ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract,
+        ProposalDeleteContract, ProposalInfo, RawTransaction, SetAccountIdContract, SignWeight,
+        SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract,
+        TransferContract, TriggerSmartContract, UnDelegateResourceContract, UnfreezeAssetContract,
+        UnfreezeBalanceV1Contract, UnfreezeBalanceV2Contract, UpdateAccountContract,
+        UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract,
+        UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
+        WithdrawExpireUnfreezeContract, WitnessInfo,
     },
 };
 
@@ -370,6 +371,48 @@ impl TronTransport for GrpcTransport {
 
     // --- Staking ---
 
+    async fn freeze_balance_v1(
+        &self,
+        params: FreezeBalanceV1Contract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = proto::FreezeBalanceContract {
+            owner_address: params.owner_address.as_bytes().to_vec(),
+            frozen_balance: params.frozen_balance.as_sun(),
+            frozen_duration: params.frozen_duration,
+            resource: params.resource.as_i32(),
+            receiver_address: params
+                .receiver_address
+                .map(|a| a.as_bytes().to_vec())
+                .unwrap_or_default(),
+        };
+        let ext = self
+            .wallet_client()
+            .freeze_balance2(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
+    async fn unfreeze_balance_v1(
+        &self,
+        params: UnfreezeBalanceV1Contract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = proto::UnfreezeBalanceContract {
+            owner_address: params.owner_address.as_bytes().to_vec(),
+            resource: params.resource.as_i32(),
+            receiver_address: params
+                .receiver_address
+                .map(|a| a.as_bytes().to_vec())
+                .unwrap_or_default(),
+        };
+        let ext = self
+            .wallet_client()
+            .unfreeze_balance2(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
     async fn freeze_balance_v2(
         &self,
         params: FreezeBalanceV2Contract,
@@ -488,6 +531,41 @@ impl TronTransport for GrpcTransport {
     }
 
     // --- Resource queries ---
+
+    async fn get_delegated_resource_v1(
+        &self,
+        from: Address,
+        to: Address,
+    ) -> Result<Vec<DelegatedResource>, Self::Error> {
+        let req = proto::DelegatedResourceMessage {
+            from_address: from.as_bytes().to_vec(),
+            to_address: to.as_bytes().to_vec(),
+        };
+        let list = self
+            .wallet_client()
+            .get_delegated_resource(req)
+            .await?
+            .into_inner();
+        list.delegated_resource
+            .into_iter()
+            .map(codec::delegated_resource_from_proto)
+            .collect()
+    }
+
+    async fn get_delegated_resource_index_v1(
+        &self,
+        address: Address,
+    ) -> Result<DelegatedResourceIndex, Self::Error> {
+        let req = proto::BytesMessage {
+            value: address.as_bytes().to_vec(),
+        };
+        let idx = self
+            .wallet_client()
+            .get_delegated_resource_account_index(req)
+            .await?
+            .into_inner();
+        codec::delegated_resource_index_from_proto(idx)
+    }
 
     async fn get_delegated_resource(
         &self,

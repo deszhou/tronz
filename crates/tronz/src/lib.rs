@@ -22,6 +22,15 @@ pub mod signers {
     pub use tronz_signer::*;
 }
 
+#[cfg(feature = "signer-keystore")]
+#[doc(no_inline)]
+pub use tronz_signer::KeystoreFile;
+#[cfg(feature = "signer-mnemonic")]
+#[doc(no_inline)]
+pub use tronz_signer::MnemonicBuilder;
+#[cfg(feature = "signer-mnemonic")]
+#[doc(no_inline)]
+pub use tronz_signer::coins_bip39;
 #[doc(no_inline)]
 pub use tronz_signer::{LocalSigner, TronSigner};
 

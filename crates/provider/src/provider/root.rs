@@ -111,6 +111,29 @@ impl<T: TronTransport> TronProvider for RootProvider<T> {
             .map_err(|e| Error::Transport(e.into()))
     }
 
+    async fn get_delegated_resource_v1(
+        &self,
+        from: Address,
+        to: Address,
+    ) -> Result<Vec<DelegatedResource>> {
+        self.inner
+            .transport
+            .get_delegated_resource_v1(from, to)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
+    async fn get_delegated_resource_index_v1(
+        &self,
+        address: Address,
+    ) -> Result<DelegatedResourceIndex> {
+        self.inner
+            .transport
+            .get_delegated_resource_index_v1(address)
+            .await
+            .map_err(|e| Error::Transport(e.into()))
+    }
+
     async fn get_delegated_resource(
         &self,
         from: Address,

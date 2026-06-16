@@ -14,3 +14,15 @@ mod local;
 pub use k256;
 pub use local::LocalSigner;
 pub use tronz_primitives::RecoverableSignature;
+
+#[cfg(feature = "mnemonic")]
+pub mod mnemonic;
+#[cfg(feature = "mnemonic")]
+pub use coins_bip39;
+#[cfg(feature = "mnemonic")]
+pub use mnemonic::MnemonicBuilder;
+
+#[cfg(feature = "keystore")]
+pub mod keystore;
+#[cfg(feature = "keystore")]
+pub use keystore::KeystoreFile;

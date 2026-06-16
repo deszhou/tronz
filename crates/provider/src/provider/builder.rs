@@ -204,6 +204,21 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         self.inner.get_transaction_info(tx_id).await
     }
 
+    async fn get_delegated_resource_v1(
+        &self,
+        from: Address,
+        to: Address,
+    ) -> Result<Vec<DelegatedResource>> {
+        self.inner.get_delegated_resource_v1(from, to).await
+    }
+
+    async fn get_delegated_resource_index_v1(
+        &self,
+        address: Address,
+    ) -> Result<DelegatedResourceIndex> {
+        self.inner.get_delegated_resource_index_v1(address).await
+    }
+
     async fn get_delegated_resource(
         &self,
         from: Address,
@@ -393,6 +408,14 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
                 .map_err(|e| Error::Transport(e.into()))?,
             ContractType::TriggerSmartContract(c) => transport
                 .trigger_smart_contract(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::FreezeBalanceV1(c) => transport
+                .freeze_balance_v1(c)
+                .await
+                .map_err(|e| Error::Transport(e.into()))?,
+            ContractType::UnfreezeBalanceV1(c) => transport
+                .unfreeze_balance_v1(c)
                 .await
                 .map_err(|e| Error::Transport(e.into()))?,
             ContractType::FreezeBalanceV2(c) => transport

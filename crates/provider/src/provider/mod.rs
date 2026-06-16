@@ -15,9 +15,10 @@ use tronz_primitives::{Address, B256, ResourceCode, Trx, TxId};
 use crate::{
     builders::{
         AccountPermissionUpdateBuilder, CancelAllUnfreezeBuilder, ClearContractAbiBuilder,
-        CreateAccountBuilder, DelegateBuilder, FreezeBuilder, SetAccountIdBuilder, TransferBuilder,
-        UndelegateBuilder, UnfreezeBuilder, UpdateAccountBuilder, UpdateContractEnergyLimitBuilder,
-        UpdateContractSettingBuilder, VoteBuilder, WithdrawBalanceBuilder, WithdrawExpireBuilder,
+        CreateAccountBuilder, DelegateBuilder, FreezeBuilder, FreezeV1Builder, SetAccountIdBuilder,
+        TransferBuilder, UndelegateBuilder, UnfreezeBuilder, UnfreezeV1Builder,
+        UpdateAccountBuilder, UpdateContractEnergyLimitBuilder, UpdateContractSettingBuilder,
+        VoteBuilder, WithdrawBalanceBuilder, WithdrawExpireBuilder,
     },
     error::Result,
     transport::TronTransport,
@@ -67,14 +68,27 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
         tx_id: TxId,
     ) -> impl Future<Output = Result<TransactionInfo>> + Send;
 
-    /// Query delegations between two accounts.
+    /// Query delegations between two accounts (Stake 1.0, legacy).
+    fn get_delegated_resource_v1(
+        &self,
+        from: Address,
+        to: Address,
+    ) -> impl Future<Output = Result<Vec<DelegatedResource>>> + Send;
+
+    /// Query the delegation index for an account (Stake 1.0, legacy).
+    fn get_delegated_resource_index_v1(
+        &self,
+        address: Address,
+    ) -> impl Future<Output = Result<DelegatedResourceIndex>> + Send;
+
+    /// Query delegations between two accounts (Stake 2.0).
     fn get_delegated_resource(
         &self,
         from: Address,
         to: Address,
     ) -> impl Future<Output = Result<Vec<DelegatedResource>>> + Send;
 
-    /// Query the delegation index for an account.
+    /// Query the delegation index for an account (Stake 2.0).
     fn get_delegated_resource_index(
         &self,
         address: Address,
@@ -218,7 +232,23 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
         TransferBuilder::new(self)
     }
 
-    /// Build a stake (freeze) operation.
+    /// Build a stake (freeze) operation (Stake 1.0, legacy).
+    fn freeze_balance_v1(&self) -> FreezeV1Builder<'_, Self>
+    where
+        Self: Sized,
+    {
+        FreezeV1Builder::new(self)
+    }
+
+    /// Build an unstake (unfreeze) operation (Stake 1.0, legacy).
+    fn unfreeze_balance_v1(&self) -> UnfreezeV1Builder<'_, Self>
+    where
+        Self: Sized,
+    {
+        UnfreezeV1Builder::new(self)
+    }
+
+    /// Build a stake (freeze) operation (Stake 2.0).
     fn freeze_balance(&self) -> FreezeBuilder<'_, Self>
     where
         Self: Sized,
@@ -226,7 +256,7 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
         FreezeBuilder::new(self)
     }
 
-    /// Build an unstake (unfreeze) operation.
+    /// Build an unstake (unfreeze) operation (Stake 2.0).
     fn unfreeze_balance(&self) -> UnfreezeBuilder<'_, Self>
     where
         Self: Sized,

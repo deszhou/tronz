@@ -14,7 +14,9 @@ An idiomatic, async-first Rust SDK for the [TRON](https://tron.network) network 
 - **Typed provider** — fluent builder API for every native contract operation
 - **Filler chain** — automatic TAPOS, fee-limit, and signing (mirrors alloy's `JoinFill`)
 - **TRX / TRC10 / TRC20** — transfers, balance queries, and token metadata
-- **Staking v2** — freeze, unfreeze, delegate, undelegate, claim rewards
+- **Staking** — Stake 2.0 (freeze, unfreeze, delegate, undelegate, claim rewards) and Stake 1.0 legacy (`freeze_balance_v1`, `unfreeze_balance_v1`)
+- **HD wallets** — BIP-39 mnemonic generation and BIP-44 key derivation (`signer-mnemonic` feature, TRON coin type 195)
+- **Keystore** — Web3 Secret Storage V3 encrypt/decrypt (`signer-keystore` feature, compatible with TronLink and gotron-sdk)
 - **Contract deploy & call** — `DeployBuilder`, `CallBuilder`, dynamic ABI, energy estimation
 - **Event decoding** — decode and filter logs with `SolEvent`
 - **Votes & account management** — SR voting, account activation, name and permission updates
@@ -28,6 +30,13 @@ An idiomatic, async-first Rust SDK for the [TRON](https://tron.network) network 
 [dependencies]
 tronz = { version = "0.1", features = ["full"] }
 ```
+
+Optional features:
+
+| Feature | Adds |
+|---|---|
+| `signer-mnemonic` | BIP-39 mnemonic generation + BIP-44 HD derivation (`MnemonicBuilder`) |
+| `signer-keystore` | Web3 Secret Storage V3 encrypt/decrypt (`LocalSigner::encrypt_keystore`, `decrypt_keystore`) |
 
 ## Quick start
 
@@ -143,6 +152,56 @@ async fn main() -> anyhow::Result<()> {
 }
 ```
 
+### Derive a signer from a mnemonic phrase
+
+```rust,no_run
+use tronz::{MnemonicBuilder, TronSigner, coins_bip39::English};
+
+fn main() -> anyhow::Result<()> {
+    let phrase = "abandon abandon abandon abandon abandon abandon \
+                  abandon abandon abandon abandon abandon about";
+
+    // Default path: m/44'/195'/0'/0/0 (TRON BIP-44 coin type 195)
+    let signer = MnemonicBuilder::<English>::default()
+        .phrase(phrase)
+        .index(0)?
+        .build()?;
+    println!("address: {}", signer.address());
+
+    // Generate a fresh random 24-word mnemonic
+    let (signer, phrase) = MnemonicBuilder::<English>::default()
+        .word_count(24)
+        .build_random()?;
+    println!("new phrase: {phrase}");
+    println!("address:    {}", signer.address());
+    Ok(())
+}
+```
+
+Requires `features = ["signer-mnemonic"]`.
+
+### Encrypt and decrypt a keystore
+
+```rust,no_run
+use tronz::{LocalSigner, TronSigner};
+
+fn main() -> anyhow::Result<()> {
+    let signer = LocalSigner::from_hex("YOUR_PRIVATE_KEY")?;
+
+    // Encrypt to a JSON file (scrypt N=2^18, AES-128-CTR)
+    let dir = std::path::Path::new("/tmp");
+    let path = signer.encrypt_keystore(dir, "my-password")?;
+    println!("saved: {}", path.display());
+
+    // Decrypt back
+    let recovered = LocalSigner::decrypt_keystore(&path, "my-password")?;
+    assert_eq!(signer.address(), recovered.address());
+    Ok(())
+}
+```
+
+Requires `features = ["signer-keystore"]`. The format is compatible with TronLink and gotron-sdk.
+
 ### Query governance proposals
 
 ```rust,no_run
@@ -208,7 +267,7 @@ Import these to unlock additional methods on any provider:
 
 ## Examples
 
-39 runnable examples are in [`examples/`](examples/examples/). All target the Nile testnet.
+42 runnable examples are in [`examples/`](examples/examples/). All target the Nile testnet.
 
 ```bash
 # Read-only queries (no key needed)
@@ -227,12 +286,21 @@ TRON_PRIVATE_KEY=<hex> cargo run -p examples --example trc20
 # Stake 2.0: freeze + delegate + claim rewards
 TRON_PRIVATE_KEY=<hex> cargo run -p examples --example stake
 
+# Stake 1.0 (legacy): freeze + unfreeze
+TRON_PRIVATE_KEY=<hex> cargo run -p examples --example stake_v1
+
 # TRC10: issue a new token
 TRON_PRIVATE_KEY=<hex> cargo run -p examples --example trc10_issue
 
 # Deploy and call a smart contract
 TRON_PRIVATE_KEY=<hex> cargo run -p examples --example contract_deploy
 TRON_PRIVATE_KEY=<hex> cargo run -p examples --example contract_send
+
+# HD wallet: derive from mnemonic (signer-mnemonic feature)
+cargo run -p examples --example signer_mnemonic
+
+# Keystore: encrypt / decrypt a private key (signer-keystore feature)
+cargo run -p examples --example signer_keystore
 ```
 
 ## Endpoints

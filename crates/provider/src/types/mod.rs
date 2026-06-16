@@ -19,13 +19,14 @@ pub use block::BlockInfo;
 pub use contract::{
     AccountPermissionUpdateContract, AssetIssueContract, CancelAllUnfreezeV2Contract,
     ClearContractAbiContract, ConstantCallResult, ContractType, CreateAccountContract,
-    CreateSmartContract, CreateWitnessContract, DelegateResourceContract, FreezeBalanceV2Contract,
-    FrozenSupply, ParticipateAssetIssueContract, Permission, PermissionKey,
-    ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, SetAccountIdContract,
-    SmartContractInfo, SrVote, TransferAssetContract, TransferContract, TriggerSmartContract,
-    UnDelegateResourceContract, UnfreezeAssetContract, UnfreezeBalanceV2Contract,
-    UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract,
-    UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
+    CreateSmartContract, CreateWitnessContract, DelegateResourceContract, FreezeBalanceV1Contract,
+    FreezeBalanceV2Contract, FrozenSupply, ParticipateAssetIssueContract, Permission,
+    PermissionKey, ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract,
+    SetAccountIdContract, SmartContractInfo, SrVote, TransferAssetContract, TransferContract,
+    TriggerSmartContract, UnDelegateResourceContract, UnfreezeAssetContract,
+    UnfreezeBalanceV1Contract, UnfreezeBalanceV2Contract, UpdateAccountContract,
+    UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract, UpdateSettingContract,
+    UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
     WithdrawExpireUnfreezeContract,
 };
 pub use network::{

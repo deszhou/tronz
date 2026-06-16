@@ -17,6 +17,10 @@ pub enum ContractType {
     Transfer(TransferContract),
     /// Call/trigger a smart contract.
     TriggerSmartContract(TriggerSmartContract),
+    /// Stake TRX for a resource (Stake 1.0, legacy).
+    FreezeBalanceV1(FreezeBalanceV1Contract),
+    /// Unstake TRX (Stake 1.0, legacy).
+    UnfreezeBalanceV1(UnfreezeBalanceV1Contract),
     /// Stake TRX for a resource (Stake 2.0).
     FreezeBalanceV2(FreezeBalanceV2Contract),
     /// Unstake TRX (Stake 2.0).
@@ -88,6 +92,8 @@ impl ContractType {
         match self {
             ContractType::Transfer(c) => c.owner_address,
             ContractType::TriggerSmartContract(c) => c.owner_address,
+            ContractType::FreezeBalanceV1(c) => c.owner_address,
+            ContractType::UnfreezeBalanceV1(c) => c.owner_address,
             ContractType::FreezeBalanceV2(c) => c.owner_address,
             ContractType::UnfreezeBalanceV2(c) => c.owner_address,
             ContractType::DelegateResource(c) => c.owner_address,
@@ -145,6 +151,39 @@ pub struct TriggerSmartContract {
     pub call_token_value: Trx,
     /// TRC10 token id sent with the call.
     pub token_id: i64,
+}
+
+/// Stake TRX for energy or bandwidth (Stake 1.0, legacy).
+///
+/// `frozen_duration` must be `3` on mainnet (the only accepted value).
+/// Set `receiver_address` to delegate the obtained resource to another account
+/// in a single step (inline delegation).
+#[derive(Clone, Debug)]
+pub struct FreezeBalanceV1Contract {
+    /// Account staking the TRX.
+    pub owner_address: Address,
+    /// Amount of TRX to stake.
+    pub frozen_balance: Trx,
+    /// Lock duration in days. Must be `3` on mainnet.
+    pub frozen_duration: i64,
+    /// Resource to obtain.
+    pub resource: ResourceCode,
+    /// Optional: delegate the resource to this account (inline delegation).
+    pub receiver_address: Option<Address>,
+}
+
+/// Unstake TRX (Stake 1.0, legacy).
+///
+/// Unlike Stake 2.0, this unfreezes **all** staked TRX for the given resource
+/// and releases the funds immediately (no unbonding delay).
+#[derive(Clone, Debug)]
+pub struct UnfreezeBalanceV1Contract {
+    /// Account unstaking.
+    pub owner_address: Address,
+    /// Resource being released.
+    pub resource: ResourceCode,
+    /// If the stake was delegated, the delegatee address.
+    pub receiver_address: Option<Address>,
 }
 
 /// Stake TRX for energy or bandwidth (Stake 2.0).
