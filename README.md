@@ -274,40 +274,34 @@ Import these to unlock additional methods on any provider:
 
 ## Examples
 
-42 runnable examples are in [`examples/`](examples/examples/). All target the Nile testnet.
+42 runnable examples are in [throgxyz/examples](https://github.com/throgxyz/examples), organized by category. All target the Nile testnet.
 
 ```bash
+git clone https://github.com/throgxyz/examples
+cd examples
+
 # Read-only queries (no key needed)
-cargo run -p examples --example query
-cargo run -p examples --example list_witnesses
-cargo run -p examples --example governance_list
-cargo run -p examples --example trc10_query
-cargo run -p examples --example trc10_by_name
+cargo run -p examples-queries --example query
+cargo run -p examples-queries --example list_witnesses
+cargo run -p examples-queries --example governance_list
 
 # Send TRX on Nile testnet
-TRON_PRIVATE_KEY=<hex> cargo run -p examples --example transfer_trx
+TRON_PRIVATE_KEY=<hex> cargo run -p examples-transfers --example transfer_trx
 
 # TRC20 balance + transfer
-TRON_PRIVATE_KEY=<hex> cargo run -p examples --example trc20
+TRON_PRIVATE_KEY=<hex> cargo run -p examples-trc20 --example trc20
 
 # Stake 2.0: freeze + delegate + claim rewards
-TRON_PRIVATE_KEY=<hex> cargo run -p examples --example stake
-
-# Stake 1.0 (legacy): freeze + unfreeze
-TRON_PRIVATE_KEY=<hex> cargo run -p examples --example stake_v1
+TRON_PRIVATE_KEY=<hex> cargo run -p examples-staking --example stake
 
 # TRC10: issue a new token
-TRON_PRIVATE_KEY=<hex> cargo run -p examples --example trc10_issue
+TRON_PRIVATE_KEY=<hex> cargo run -p examples-trc10 --example trc10_issue
 
 # Deploy and call a smart contract
-TRON_PRIVATE_KEY=<hex> cargo run -p examples --example contract_deploy
-TRON_PRIVATE_KEY=<hex> cargo run -p examples --example contract_send
+TRON_PRIVATE_KEY=<hex> cargo run -p examples-contracts --example contract_deploy
 
-# HD wallet: derive from mnemonic (signer-mnemonic feature)
-cargo run -p examples --example signer_mnemonic
-
-# Keystore: encrypt / decrypt a private key (signer-keystore feature)
-cargo run -p examples --example signer_keystore
+# HD wallet: derive from mnemonic
+cargo run -p examples-signers --example signer_mnemonic
 ```
 
 ## Endpoints
