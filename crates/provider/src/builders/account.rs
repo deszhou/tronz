@@ -33,8 +33,8 @@ impl<'a, P: TronProvider> CreateAccountBuilder<'a, P> {
     }
 
     /// Override the payer address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -92,8 +92,8 @@ impl<'a, P: TronProvider> UpdateAccountBuilder<'a, P> {
     }
 
     /// Override the account address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

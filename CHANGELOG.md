@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-17
+
 ### Added
 
 - BIP-39 mnemonic + BIP-44 HD key derivation (`signer-mnemonic` feature)
@@ -26,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `provider.unfreeze_balance_v1()` → `UnfreezeV1Builder` (releases all staked TRX immediately, no unbonding delay)
   - `provider.get_delegated_resource_v1()` / `get_delegated_resource_index_v1()` — query Stake 1.0 delegation state
   - New example: `stake_v1`
+
+### Changed (Breaking)
+
+- All transaction builders: `.owner(Address)` renamed to `.from(Address)` — aligns with alloy's `TransactionRequest` convention
+- `WitnessApi::update_witness_url()` renamed to `update_witness()` — consistent with `update_brokerage()` and `become_witness()`
+- `UndelegateBuilder::from(delegatee)` renamed to `receiver(delegatee)` — avoids collision with the new `.from()` sender override and aligns with the proto field name `receiver_address`
 
 ## [0.1.1] - 2026-06-16
 

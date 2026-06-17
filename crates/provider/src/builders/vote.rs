@@ -46,8 +46,8 @@ impl<'a, P: TronProvider> VoteBuilder<'a, P> {
     }
 
     /// Override the voter address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

@@ -35,8 +35,8 @@ impl<'a, P: TronProvider> DelegateBuilder<'a, P> {
     }
 
     /// Override the delegator account.
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -88,7 +88,7 @@ impl<'a, P: TronProvider> DelegateBuilder<'a, P> {
 pub struct UndelegateBuilder<'a, P> {
     provider: &'a P,
     owner: Option<Address>,
-    from: Option<Address>,
+    receiver: Option<Address>,
     amount: Option<Trx>,
     resource: ResourceCode,
 }
@@ -99,21 +99,21 @@ impl<'a, P: TronProvider> UndelegateBuilder<'a, P> {
         Self {
             provider,
             owner: None,
-            from: None,
+            receiver: None,
             amount: None,
             resource: ResourceCode::Energy,
         }
     }
 
     /// Override the delegator account.
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
     /// Account whose delegation is being reclaimed.
-    pub fn from(mut self, from: Address) -> Self {
-        self.from = Some(from);
+    pub fn receiver(mut self, receiver: Address) -> Self {
+        self.receiver = Some(receiver);
         self
     }
 
@@ -132,7 +132,7 @@ impl<'a, P: TronProvider> UndelegateBuilder<'a, P> {
     /// Build, sign, and broadcast.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
         let owner = resolve_owner(self.owner, self.provider)?;
-        let from = self.from.ok_or(Error::MissingField("from"))?;
+        let receiver = self.receiver.ok_or(Error::MissingField("receiver"))?;
         let amount = self.amount.ok_or(Error::MissingField("amount"))?;
 
         let req = TransactionRequest {
@@ -141,7 +141,7 @@ impl<'a, P: TronProvider> UndelegateBuilder<'a, P> {
                     owner_address: owner,
                     resource: self.resource,
                     balance: amount,
-                    receiver_address: from,
+                    receiver_address: receiver,
                 },
             )),
             ..Default::default()

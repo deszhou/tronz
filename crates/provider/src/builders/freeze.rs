@@ -41,8 +41,8 @@ impl<'a, P: TronProvider> FreezeV1Builder<'a, P> {
     }
 
     /// Override the staking account.
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -116,8 +116,8 @@ impl<'a, P: TronProvider> UnfreezeV1Builder<'a, P> {
     }
 
     /// Override the account.
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -169,8 +169,8 @@ impl<'a, P: TronProvider> FreezeBuilder<'a, P> {
     }
 
     /// Override the staking account.
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -223,8 +223,8 @@ impl<'a, P: TronProvider> UnfreezeBuilder<'a, P> {
     }
 
     /// Override the account.
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

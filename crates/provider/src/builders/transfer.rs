@@ -31,8 +31,8 @@ impl<'a, P: TronProvider> TransferBuilder<'a, P> {
     }
 
     /// Override the sender (defaults to the provider's signer address).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

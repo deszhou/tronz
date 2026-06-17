@@ -60,7 +60,7 @@ pub trait WitnessApi: TronProvider + Sized {
     fn become_witness(&self) -> BecomeWitnessBuilder<'_, Self>;
 
     /// Start building an update-SR-URL transaction.
-    fn update_witness_url(&self) -> UpdateWitnessBuilder<'_, Self>;
+    fn update_witness(&self) -> UpdateWitnessBuilder<'_, Self>;
 
     /// Start building a change-brokerage-ratio transaction.
     fn update_brokerage(&self) -> UpdateBrokerageBuilder<'_, Self>;
@@ -89,7 +89,7 @@ impl<P: TronProvider> WitnessApi for P {
         BecomeWitnessBuilder::new(self)
     }
 
-    fn update_witness_url(&self) -> UpdateWitnessBuilder<'_, Self> {
+    fn update_witness(&self) -> UpdateWitnessBuilder<'_, Self> {
         UpdateWitnessBuilder::new(self)
     }
 
@@ -123,8 +123,8 @@ impl<'a, P: TronProvider> BecomeWitnessBuilder<'a, P> {
     }
 
     /// Override the applicant address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -161,7 +161,7 @@ impl<'a, P: TronProvider> BecomeWitnessBuilder<'a, P> {
 
 /// Builds an update-SR-URL transaction.
 ///
-/// Created by [`WitnessApi::update_witness_url`].
+/// Created by [`WitnessApi::update_witness`].
 pub struct UpdateWitnessBuilder<'a, P> {
     provider: &'a P,
     owner: Option<Address>,
@@ -180,8 +180,8 @@ impl<'a, P: TronProvider> UpdateWitnessBuilder<'a, P> {
     }
 
     /// Override the SR address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -237,8 +237,8 @@ impl<'a, P: TronProvider> UpdateBrokerageBuilder<'a, P> {
     }
 
     /// Override the SR address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

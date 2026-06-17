@@ -212,8 +212,8 @@ impl<'a, P: TronProvider> TransferTrc10Builder<'a, P> {
     }
 
     /// Override the sender (defaults to the provider's signer address).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -309,8 +309,8 @@ impl<'a, P: TronProvider> IssueTrc10Builder<'a, P> {
     }
 
     /// Override the issuer address (defaults to the provider's signer address).
-    pub fn owner(mut self, owner: tronz_primitives::Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: tronz_primitives::Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -460,8 +460,8 @@ impl<'a, P: TronProvider> ParticipateTrc10Builder<'a, P> {
     }
 
     /// Override the buyer address (defaults to the provider's signer address).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -533,8 +533,8 @@ impl<'a, P: TronProvider> UnfreezeTrc10Builder<'a, P> {
     }
 
     /// Override the issuer address (defaults to the provider's signer address).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -588,8 +588,8 @@ impl<'a, P: TronProvider> UpdateTrc10Builder<'a, P> {
     }
 
     /// Override the issuer address (defaults to the provider's signer address).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

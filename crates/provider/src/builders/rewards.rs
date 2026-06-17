@@ -27,8 +27,8 @@ impl<'a, P: TronProvider> WithdrawBalanceBuilder<'a, P> {
     }
 
     /// Override the account.
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

@@ -36,8 +36,8 @@ impl<'a, P: TronProvider> SetAccountIdBuilder<'a, P> {
     }
 
     /// Override the account address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -94,8 +94,8 @@ impl<'a, P: TronProvider> ClearContractAbiBuilder<'a, P> {
     }
 
     /// Override the contract owner address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -156,8 +156,8 @@ impl<'a, P: TronProvider> UpdateContractSettingBuilder<'a, P> {
     }
 
     /// Override the contract owner address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 
@@ -228,8 +228,8 @@ impl<'a, P: TronProvider> UpdateContractEnergyLimitBuilder<'a, P> {
     }
 
     /// Override the contract owner address (defaults to the provider's signer).
-    pub fn owner(mut self, owner: Address) -> Self {
-        self.owner = Some(owner);
+    pub fn from(mut self, from: Address) -> Self {
+        self.owner = Some(from);
         self
     }
 

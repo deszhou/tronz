@@ -2,11 +2,11 @@
 
 An idiomatic, async-first Rust SDK for the [TRON](https://tron.network) network — inspired by [alloy](https://github.com/alloy-rs/alloy).
 
-> **⚠️ Work in progress.** Tronz is under active development. APIs may change without notice and it is not yet production-ready.
-
 [![Crates.io](https://img.shields.io/crates/v/tronz.svg)](https://crates.io/crates/tronz)
+[![docs.rs](https://docs.rs/tronz/badge.svg)](https://docs.rs/tronz)
 [![License: MIT / Apache-2.0](https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-blue.svg)](#license)
 [![Rust 1.85+](https://img.shields.io/badge/rust-1.85%2B-orange.svg)](https://www.rust-lang.org)
+[![CI](https://github.com/throgxyz/tronz/actions/workflows/ci.yml/badge.svg)](https://github.com/throgxyz/tronz/actions/workflows/ci.yml)
 
 ## Features
 
@@ -26,9 +26,15 @@ An idiomatic, async-first Rust SDK for the [TRON](https://tron.network) network 
 
 ## Installation
 
+```sh
+cargo add tronz
+```
+
+Or add it to your `Cargo.toml` manually:
+
 ```toml
 [dependencies]
-tronz = { version = "0.1", features = ["full"] }
+tronz = "0.1"
 ```
 
 Optional features:
@@ -37,6 +43,7 @@ Optional features:
 |---|---|
 | `signer-mnemonic` | BIP-39 mnemonic generation + BIP-44 HD derivation (`MnemonicBuilder`) |
 | `signer-keystore` | Web3 Secret Storage V3 encrypt/decrypt (`LocalSigner::encrypt_keystore`, `decrypt_keystore`) |
+| `provider-grpc` | gRPC transport without TLS — use for local or private nodes |
 
 ## Quick start
 
@@ -60,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
 ### Send TRX
 
 ```rust,no_run
-use tronz::{LocalSigner, ProviderBuilder, TronProvider, TronSigner, Trx, TRONGRID_NILE};
+use tronz::{LocalSigner, ProviderBuilder, TronProvider, Trx, TRONGRID_NILE};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -114,7 +121,7 @@ async fn main() -> anyhow::Result<()> {
 ### Stake TRX and delegate energy
 
 ```rust,no_run
-use tronz::{LocalSigner, ProviderBuilder, TronProvider, TronSigner, Trx, ResourceCode, TRONGRID_NILE};
+use tronz::{LocalSigner, ProviderBuilder, TronProvider, Trx, ResourceCode, TRONGRID_NILE};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -178,7 +185,7 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-Requires `features = ["signer-mnemonic"]`.
+Requires the `signer-mnemonic` feature.
 
 ### Encrypt and decrypt a keystore
 
@@ -200,7 +207,7 @@ fn main() -> anyhow::Result<()> {
 }
 ```
 
-Requires `features = ["signer-keystore"]`. The format is compatible with TronLink and gotron-sdk.
+Requires the `signer-keystore` feature. The format is compatible with TronLink and gotron-sdk.
 
 ### Query governance proposals
 
@@ -249,11 +256,11 @@ async fn main() -> anyhow::Result<()> {
 
 | Crate | Description |
 |---|---|
-| [`tronz`](crates/tronz) | Meta-crate — re-exports everything |
-| [`tronz-primitives`](crates/primitives) | `Address`, `Trx`, `ResourceCode`, `RecoverableSignature` |
-| [`tronz-signer`](crates/signer) | `TronSigner` trait and `LocalSigner` (in-memory secp256k1) |
-| [`tronz-provider`](crates/provider) | gRPC transport, provider, fillers, domain types, extension traits |
-| [`tronz-contract`](crates/contract) | `ContractInstance`, `DeployBuilder`, TRC20 bindings, event decoding |
+| [`tronz`](https://crates.io/crates/tronz) | Meta-crate — re-exports everything |
+| [`tronz-primitives`](https://crates.io/crates/tronz-primitives) | `Address`, `Trx`, `ResourceCode`, `RecoverableSignature` |
+| [`tronz-signer`](https://crates.io/crates/tronz-signer) | `TronSigner` trait and `LocalSigner` (in-memory secp256k1) |
+| [`tronz-provider`](https://crates.io/crates/tronz-provider) | gRPC transport, provider, fillers, domain types, extension traits |
+| [`tronz-contract`](https://crates.io/crates/tronz-contract) | `ContractInstance`, `DeployBuilder`, TRC20 bindings, event decoding |
 
 ## Extension traits
 
@@ -261,9 +268,9 @@ Import these to unlock additional methods on any provider:
 
 | Trait | Import | Methods |
 |---|---|---|
-| `Trc10Api` | `tronz::providers::ext::Trc10Api` | issue, transfer, balance, participate, update, look up by name |
-| `WitnessApi` | `tronz::providers::ext::WitnessApi` | list SRs, brokerage, become SR, update URL/brokerage |
-| `GovernanceApi` | `tronz::providers::ext::GovernanceApi` | list/fetch proposals, submit, approve, cancel |
+| `Trc10Api` | `use tronz::providers::ext::Trc10Api as _` | issue, transfer, balance, participate, update, look up by name |
+| `WitnessApi` | `use tronz::providers::ext::WitnessApi as _` | list SRs, brokerage, become SR, update URL/brokerage |
+| `GovernanceApi` | `use tronz::providers::ext::GovernanceApi as _` | list/fetch proposals, submit, approve, cancel |
 
 ## Examples
 
