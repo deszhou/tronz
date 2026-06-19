@@ -1621,7 +1621,11 @@ impl TronTransport for GrpcTransport {
             .get_market_price_by_pair(req)
             .await?
             .into_inner();
-        Ok(list.prices.into_iter().map(codec::market_price_from_proto).collect())
+        Ok(list
+            .prices
+            .into_iter()
+            .map(codec::market_price_from_proto)
+            .collect())
     }
 
     async fn get_market_order_list_by_pair(

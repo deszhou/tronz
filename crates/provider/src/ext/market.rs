@@ -78,20 +78,14 @@ pub trait MarketApi: TronProvider + Sized {
 }
 
 impl<P: TronProvider> MarketApi for P {
-    async fn get_market_order_by_id(
-        &self,
-        order_id: &[u8],
-    ) -> Result<Option<MarketOrderInfo>> {
+    async fn get_market_order_by_id(&self, order_id: &[u8]) -> Result<Option<MarketOrderInfo>> {
         self.transport()
             .get_market_order_by_id(order_id)
             .await
             .map_err(|e| Error::from(e.into()))
     }
 
-    async fn get_market_order_by_account(
-        &self,
-        address: Address,
-    ) -> Result<Vec<MarketOrderInfo>> {
+    async fn get_market_order_by_account(&self, address: Address) -> Result<Vec<MarketOrderInfo>> {
         self.transport()
             .get_market_order_by_account(address)
             .await
@@ -203,14 +197,18 @@ impl<'a, P: TronProvider> MarketSellBuilder<'a, P> {
     /// Build, sign, and broadcast the sell order.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
         let owner = resolve_owner(self.owner, self.provider)?;
-        let sell_token_id =
-            self.sell_token_id.ok_or(Error::missing_field("sell_token_id"))?;
-        let sell_token_quantity =
-            self.sell_token_quantity.ok_or(Error::missing_field("sell_token_quantity"))?;
-        let buy_token_id =
-            self.buy_token_id.ok_or(Error::missing_field("buy_token_id"))?;
-        let buy_token_quantity =
-            self.buy_token_quantity.ok_or(Error::missing_field("buy_token_quantity"))?;
+        let sell_token_id = self
+            .sell_token_id
+            .ok_or(Error::missing_field("sell_token_id"))?;
+        let sell_token_quantity = self
+            .sell_token_quantity
+            .ok_or(Error::missing_field("sell_token_quantity"))?;
+        let buy_token_id = self
+            .buy_token_id
+            .ok_or(Error::missing_field("buy_token_id"))?;
+        let buy_token_quantity = self
+            .buy_token_quantity
+            .ok_or(Error::missing_field("buy_token_quantity"))?;
 
         let req = TransactionRequest {
             contract: Some(ContractType::MarketSellAsset(MarketSellAssetContract {

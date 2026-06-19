@@ -910,9 +910,7 @@ pub(super) fn raw_from_plain(tx: proto::Transaction) -> Result<RawTransaction, T
 
 // ── DEX (Bancor exchange) ─────────────────────────────────────────────────────
 
-pub(super) fn exchange_create_to_proto(
-    p: ExchangeCreateContract,
-) -> proto::ExchangeCreateContract {
+pub(super) fn exchange_create_to_proto(p: ExchangeCreateContract) -> proto::ExchangeCreateContract {
     proto::ExchangeCreateContract {
         owner_address: addr_bytes(p.owner_address),
         first_token_id: str_bytes(p.first_token_id),
@@ -922,9 +920,7 @@ pub(super) fn exchange_create_to_proto(
     }
 }
 
-pub(super) fn exchange_inject_to_proto(
-    p: ExchangeInjectContract,
-) -> proto::ExchangeInjectContract {
+pub(super) fn exchange_inject_to_proto(p: ExchangeInjectContract) -> proto::ExchangeInjectContract {
     proto::ExchangeInjectContract {
         owner_address: addr_bytes(p.owner_address),
         exchange_id: p.exchange_id,

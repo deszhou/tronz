@@ -241,7 +241,9 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> FilledProvider<T, F> {
             ContractType::WithdrawExpireUnfreeze(c) => transport.withdraw_expire_unfreeze(c).await,
             ContractType::CancelAllUnfreezeV2(c) => transport.cancel_all_unfreeze_v2(c).await,
             ContractType::WithdrawBalance(c) => transport.withdraw_balance(c).await,
-            ContractType::AccountPermissionUpdate(c) => transport.account_permission_update(c).await,
+            ContractType::AccountPermissionUpdate(c) => {
+                transport.account_permission_update(c).await
+            }
             ContractType::CreateSmartContract(c) => transport.create_smart_contract(c).await,
             ContractType::AssetIssue(c) => transport.create_asset_issue(c).await,
             ContractType::TransferAsset(c) => transport.transfer_asset(c).await,

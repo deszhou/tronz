@@ -76,13 +76,19 @@ pub fn encode_approve(to: Address, token_id: U256) -> Bytes {
 /// ABI-encode the `balanceOf(owner)` constant call.
 pub fn encode_balance_of(owner: Address) -> Bytes {
     use alloy_sol_types::SolCall as _;
-    ITRC721::balanceOfCall { owner: owner.into() }.abi_encode().into()
+    ITRC721::balanceOfCall {
+        owner: owner.into(),
+    }
+    .abi_encode()
+    .into()
 }
 
 /// ABI-encode the `ownerOf(tokenId)` constant call.
 pub fn encode_owner_of(token_id: U256) -> Bytes {
     use alloy_sol_types::SolCall as _;
-    ITRC721::ownerOfCall { tokenId: token_id }.abi_encode().into()
+    ITRC721::ownerOfCall { tokenId: token_id }
+        .abi_encode()
+        .into()
 }
 
 /// Decode the `uint256` returned by `balanceOf`.
@@ -140,19 +146,13 @@ mod tests {
     #[test]
     fn balance_of_selector() {
         // keccak256("balanceOf(address)")[..4] == 0x70a08231
-        assert_eq!(
-            ITRC721::balanceOfCall::SELECTOR,
-            [0x70, 0xa0, 0x82, 0x31]
-        );
+        assert_eq!(ITRC721::balanceOfCall::SELECTOR, [0x70, 0xa0, 0x82, 0x31]);
     }
 
     #[test]
     fn owner_of_selector() {
         // keccak256("ownerOf(uint256)")[..4] == 0x6352211e
-        assert_eq!(
-            ITRC721::ownerOfCall::SELECTOR,
-            [0x63, 0x52, 0x21, 0x1e]
-        );
+        assert_eq!(ITRC721::ownerOfCall::SELECTOR, [0x63, 0x52, 0x21, 0x1e]);
     }
 
     #[test]

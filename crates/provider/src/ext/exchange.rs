@@ -41,9 +41,8 @@ use crate::{
 /// ```
 pub trait ExchangeApi: TronProvider + Sized {
     /// List all exchange pairs on-chain.
-    fn list_exchanges(
-        &self,
-    ) -> impl std::future::Future<Output = Result<Vec<ExchangeInfo>>> + Send;
+    fn list_exchanges(&self)
+    -> impl std::future::Future<Output = Result<Vec<ExchangeInfo>>> + Send;
 
     /// Fetch a paginated list of exchange pairs.
     fn get_paginated_exchange_list(
@@ -183,14 +182,18 @@ impl<'a, P: TronProvider> ExchangeCreateBuilder<'a, P> {
     /// Build, sign, and broadcast the exchange-create transaction.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
         let owner = resolve_owner(self.owner, self.provider)?;
-        let first_token_id =
-            self.first_token_id.ok_or(Error::missing_field("first_token_id"))?;
-        let first_token_balance =
-            self.first_token_balance.ok_or(Error::missing_field("first_token_balance"))?;
-        let second_token_id =
-            self.second_token_id.ok_or(Error::missing_field("second_token_id"))?;
-        let second_token_balance =
-            self.second_token_balance.ok_or(Error::missing_field("second_token_balance"))?;
+        let first_token_id = self
+            .first_token_id
+            .ok_or(Error::missing_field("first_token_id"))?;
+        let first_token_balance = self
+            .first_token_balance
+            .ok_or(Error::missing_field("first_token_balance"))?;
+        let second_token_id = self
+            .second_token_id
+            .ok_or(Error::missing_field("second_token_id"))?;
+        let second_token_balance = self
+            .second_token_balance
+            .ok_or(Error::missing_field("second_token_balance"))?;
 
         let req = TransactionRequest {
             contract: Some(ContractType::ExchangeCreate(ExchangeCreateContract {
@@ -266,7 +269,9 @@ impl<'a, P: TronProvider> ExchangeInjectBuilder<'a, P> {
     /// Build, sign, and broadcast the inject transaction.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
         let owner = resolve_owner(self.owner, self.provider)?;
-        let exchange_id = self.exchange_id.ok_or(Error::missing_field("exchange_id"))?;
+        let exchange_id = self
+            .exchange_id
+            .ok_or(Error::missing_field("exchange_id"))?;
         let token_id = self.token_id.ok_or(Error::missing_field("token_id"))?;
         let quant = self.quant.ok_or(Error::missing_field("quant"))?;
 
@@ -343,7 +348,9 @@ impl<'a, P: TronProvider> ExchangeWithdrawBuilder<'a, P> {
     /// Build, sign, and broadcast the withdraw transaction.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
         let owner = resolve_owner(self.owner, self.provider)?;
-        let exchange_id = self.exchange_id.ok_or(Error::missing_field("exchange_id"))?;
+        let exchange_id = self
+            .exchange_id
+            .ok_or(Error::missing_field("exchange_id"))?;
         let token_id = self.token_id.ok_or(Error::missing_field("token_id"))?;
         let quant = self.quant.ok_or(Error::missing_field("quant"))?;
 
@@ -428,7 +435,9 @@ impl<'a, P: TronProvider> ExchangeTradeBuilder<'a, P> {
     /// Build, sign, and broadcast the trade transaction.
     pub async fn send(self) -> Result<PendingTransaction<P>> {
         let owner = resolve_owner(self.owner, self.provider)?;
-        let exchange_id = self.exchange_id.ok_or(Error::missing_field("exchange_id"))?;
+        let exchange_id = self
+            .exchange_id
+            .ok_or(Error::missing_field("exchange_id"))?;
         let token_id = self.token_id.ok_or(Error::missing_field("token_id"))?;
         let quant = self.quant.ok_or(Error::missing_field("quant"))?;
         let expected = self.expected.ok_or(Error::missing_field("expected"))?;

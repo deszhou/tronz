@@ -55,7 +55,9 @@ impl<P: TronProvider> Trc721Instance<P> {
 
     /// Return a new instance pointing at a different address.
     pub fn at(self, address: Address) -> Self {
-        Self { inner: self.inner.at(address) }
+        Self {
+            inner: self.inner.at(address),
+        }
     }
 
     // ── reads ─────────────────────────────────────────────────────────────────
@@ -84,7 +86,11 @@ impl<P: TronProvider> Trc721Instance<P> {
     pub async fn token_uri(&self, token_id: U256) -> Result<String, Trc721Error> {
         let out = self
             .inner
-            .call_raw(ITRC721::tokenURICall { tokenId: token_id }.abi_encode().into())
+            .call_raw(
+                ITRC721::tokenURICall { tokenId: token_id }
+                    .abi_encode()
+                    .into(),
+            )
             .call()
             .await?;
         Ok(decode_string_return(&out)?)
@@ -92,11 +98,7 @@ impl<P: TronProvider> Trc721Instance<P> {
 
     /// Fetch the number of tokens owned by `owner`.
     pub async fn balance_of(&self, owner: Address) -> Result<U256, Trc721Error> {
-        let out = self
-            .inner
-            .call_raw(encode_balance_of(owner))
-            .call()
-            .await?;
+        let out = self.inner.call_raw(encode_balance_of(owner)).call().await?;
         Ok(decode_uint256_return(&out)?)
     }
 
@@ -114,7 +116,11 @@ impl<P: TronProvider> Trc721Instance<P> {
     pub async fn get_approved(&self, token_id: U256) -> Result<Address, Trc721Error> {
         let out = self
             .inner
-            .call_raw(ITRC721::getApprovedCall { tokenId: token_id }.abi_encode().into())
+            .call_raw(
+                ITRC721::getApprovedCall { tokenId: token_id }
+                    .abi_encode()
+                    .into(),
+            )
             .call()
             .await?;
         Ok(decode_address_return(&out)?)
@@ -150,7 +156,10 @@ impl<P: TronProvider> Trc721Instance<P> {
         to: Address,
         token_id: U256,
     ) -> Result<PendingTransaction<P>, Trc721Error> {
-        self.inner.call_raw(encode_transfer_from(from, to, token_id)).send().await
+        self.inner
+            .call_raw(encode_transfer_from(from, to, token_id))
+            .send()
+            .await
     }
 
     /// Safe-transfer `token_id` from `from` to `to` (calls `onERC721Received` on the recipient).
@@ -160,7 +169,10 @@ impl<P: TronProvider> Trc721Instance<P> {
         to: Address,
         token_id: U256,
     ) -> Result<PendingTransaction<P>, Trc721Error> {
-        self.inner.call_raw(encode_safe_transfer_from(from, to, token_id)).send().await
+        self.inner
+            .call_raw(encode_safe_transfer_from(from, to, token_id))
+            .send()
+            .await
     }
 
     /// Approve `to` to transfer `token_id`.
@@ -169,7 +181,10 @@ impl<P: TronProvider> Trc721Instance<P> {
         to: Address,
         token_id: U256,
     ) -> Result<PendingTransaction<P>, Trc721Error> {
-        self.inner.call_raw(encode_approve(to, token_id)).send().await
+        self.inner
+            .call_raw(encode_approve(to, token_id))
+            .send()
+            .await
     }
 
     /// Approve or revoke `operator` to manage all of the signer's tokens.

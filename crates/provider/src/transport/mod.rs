@@ -606,7 +606,8 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
     ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
 
     /// List all exchange pairs on-chain.
-    fn list_exchanges(&self) -> impl Future<Output = Result<Vec<ExchangeInfo>, Self::Error>> + Send;
+    fn list_exchanges(&self)
+    -> impl Future<Output = Result<Vec<ExchangeInfo>, Self::Error>> + Send;
 
     /// Fetch a paginated list of exchange pairs.
     fn get_paginated_exchange_list(
