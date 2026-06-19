@@ -24,6 +24,11 @@ pub enum PendingTransactionError {
     /// Polling exhausted all attempts without the transaction being indexed.
     #[error("timed out waiting for transaction confirmation")]
     ConfirmationTimeout,
+
+    /// The transaction was confirmed on-chain but execution did not succeed
+    /// (e.g. reverted or ran out of energy). Carries the full receipt.
+    #[error("transaction confirmed but execution failed: {:?}", .0.contract_result)]
+    Reverted(Box<TransactionInfo>),
 }
 
 /// Handle to a broadcast transaction; can be awaited to confirmation.
@@ -59,13 +64,24 @@ impl<P: TronProvider> PendingTransaction<P> {
     }
 
     /// Poll for confirmation with a custom interval and attempt count.
+    ///
+    /// Returns the receipt as soon as the node has indexed the transaction,
+    /// regardless of whether on-chain execution succeeded — inspect
+    /// [`TransactionInfo::is_success`] (or use [`await_success`]) to assert it
+    /// ran successfully.
+    ///
+    /// [`await_success`]: Self::await_success
     pub async fn await_confirmed_with(
         self,
         interval: Duration,
         max_attempts: u32,
     ) -> Result<TransactionInfo, PendingTransactionError> {
-        for _ in 0..max_attempts {
-            tokio::time::sleep(interval).await;
+        for attempt in 0..max_attempts {
+            // Check first so a fast-confirming tx returns without waiting a full
+            // interval; only sleep between subsequent attempts.
+            if attempt > 0 {
+                tokio::time::sleep(interval).await;
+            }
             match self.provider.get_transaction_info(self.tx_id).await {
                 Ok(Some(info)) => return Ok(info),
                 // Not yet indexed — keep polling.
@@ -74,5 +90,17 @@ impl<P: TronProvider> PendingTransaction<P> {
             }
         }
         Err(PendingTransactionError::ConfirmationTimeout)
+    }
+
+    /// Like [`await_confirmed`](Self::await_confirmed), but additionally fails
+    /// with [`PendingTransactionError::Reverted`] if the transaction was
+    /// confirmed but its on-chain execution did not succeed.
+    pub async fn await_success(self) -> Result<TransactionInfo, PendingTransactionError> {
+        let info = self.await_confirmed().await?;
+        if info.is_success() {
+            Ok(info)
+        } else {
+            Err(PendingTransactionError::Reverted(Box::new(info)))
+        }
     }
 }

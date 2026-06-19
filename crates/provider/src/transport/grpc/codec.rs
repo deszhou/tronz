@@ -12,10 +12,13 @@ use crate::{
         AccountInfo, AccountPermissionUpdateContract, AccountPermissions, AccountResource,
         AssetInfo, AssetIssueContract, BlockInfo, ClearContractAbiContract, ConstantCallResult,
         ContractResult, CreateAccountContract, CreateSmartContract, CreateWitnessContract,
-        DelegatedResource, DelegatedResourceIndex, FreezeV2, Log, ParticipateAssetIssueContract,
-        Permission, PermissionKey, ProposalApproveContract, ProposalCreateContract,
-        ProposalDeleteContract, ProposalInfo, ProposalState, RawTransaction, SetAccountIdContract,
-        SignWeight, SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract,
+        DelegatedResource, DelegatedResourceIndex, ExchangeCreateContract, ExchangeInfo,
+        ExchangeInjectContract, ExchangeTransactionContract, ExchangeWithdrawContract, FreezeV2,
+        Log, MarketCancelOrderContract, MarketOrderInfo, MarketOrderPair, MarketOrderState,
+        MarketPrice, MarketSellAssetContract, ParticipateAssetIssueContract, Permission,
+        PermissionKey, ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract,
+        ProposalInfo, ProposalState, RawTransaction, SetAccountIdContract, SignWeight,
+        SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract,
         TransferContract, TriggerSmartContract, TxStatus, UnfreezeAssetContract, UnfreezeV2,
         UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract,
         UpdateEnergyLimitContract, UpdateSettingContract, UpdateWitnessContract, Vote,
@@ -903,6 +906,127 @@ pub(super) fn raw_from_plain(tx: proto::Transaction) -> Result<RawTransaction, T
 
     let raw_proto = tx.encode_to_vec();
     RawTransaction::from_proto_extention(tx_id_bytes.to_vec(), raw_proto, expiration, timestamp)
+}
+
+// ── DEX (Bancor exchange) ─────────────────────────────────────────────────────
+
+pub(super) fn exchange_create_to_proto(
+    p: ExchangeCreateContract,
+) -> proto::ExchangeCreateContract {
+    proto::ExchangeCreateContract {
+        owner_address: addr_bytes(p.owner_address),
+        first_token_id: str_bytes(p.first_token_id),
+        first_token_balance: p.first_token_balance,
+        second_token_id: str_bytes(p.second_token_id),
+        second_token_balance: p.second_token_balance,
+    }
+}
+
+pub(super) fn exchange_inject_to_proto(
+    p: ExchangeInjectContract,
+) -> proto::ExchangeInjectContract {
+    proto::ExchangeInjectContract {
+        owner_address: addr_bytes(p.owner_address),
+        exchange_id: p.exchange_id,
+        token_id: str_bytes(p.token_id),
+        quant: p.quant,
+    }
+}
+
+pub(super) fn exchange_withdraw_to_proto(
+    p: ExchangeWithdrawContract,
+) -> proto::ExchangeWithdrawContract {
+    proto::ExchangeWithdrawContract {
+        owner_address: addr_bytes(p.owner_address),
+        exchange_id: p.exchange_id,
+        token_id: str_bytes(p.token_id),
+        quant: p.quant,
+    }
+}
+
+pub(super) fn exchange_transaction_to_proto(
+    p: ExchangeTransactionContract,
+) -> proto::ExchangeTransactionContract {
+    proto::ExchangeTransactionContract {
+        owner_address: addr_bytes(p.owner_address),
+        exchange_id: p.exchange_id,
+        token_id: str_bytes(p.token_id),
+        quant: p.quant,
+        expected: p.expected,
+    }
+}
+
+pub(super) fn exchange_info_from_proto(
+    e: proto::Exchange,
+) -> Result<ExchangeInfo, TransportErrorKind> {
+    Ok(ExchangeInfo {
+        exchange_id: e.exchange_id,
+        creator_address: addr(e.creator_address)?,
+        create_time: e.create_time,
+        first_token_id: String::from_utf8_lossy(&e.first_token_id).into_owned(),
+        first_token_balance: e.first_token_balance,
+        second_token_id: String::from_utf8_lossy(&e.second_token_id).into_owned(),
+        second_token_balance: e.second_token_balance,
+    })
+}
+
+// ── Market (order-book DEX) ───────────────────────────────────────────────────
+
+pub(super) fn market_sell_asset_to_proto(
+    p: MarketSellAssetContract,
+) -> proto::MarketSellAssetContract {
+    proto::MarketSellAssetContract {
+        owner_address: addr_bytes(p.owner_address),
+        sell_token_id: str_bytes(p.sell_token_id),
+        sell_token_quantity: p.sell_token_quantity,
+        buy_token_id: str_bytes(p.buy_token_id),
+        buy_token_quantity: p.buy_token_quantity,
+    }
+}
+
+pub(super) fn market_cancel_order_to_proto(
+    p: MarketCancelOrderContract,
+) -> proto::MarketCancelOrderContract {
+    proto::MarketCancelOrderContract {
+        owner_address: addr_bytes(p.owner_address),
+        order_id: p.order_id,
+    }
+}
+
+pub(super) fn market_order_from_proto(
+    o: proto::MarketOrder,
+) -> Result<MarketOrderInfo, TransportErrorKind> {
+    let state = match o.state {
+        1 => MarketOrderState::Inactive,
+        2 => MarketOrderState::Canceled,
+        _ => MarketOrderState::Active,
+    };
+    Ok(MarketOrderInfo {
+        order_id: o.order_id,
+        owner_address: addr(o.owner_address)?,
+        create_time: o.create_time,
+        sell_token_id: String::from_utf8_lossy(&o.sell_token_id).into_owned(),
+        sell_token_quantity: o.sell_token_quantity,
+        buy_token_id: String::from_utf8_lossy(&o.buy_token_id).into_owned(),
+        buy_token_quantity: o.buy_token_quantity,
+        sell_token_quantity_remain: o.sell_token_quantity_remain,
+        sell_token_quantity_return: o.sell_token_quantity_return,
+        state,
+    })
+}
+
+pub(super) fn market_order_pair_from_proto(p: proto::MarketOrderPair) -> MarketOrderPair {
+    MarketOrderPair {
+        sell_token_id: String::from_utf8_lossy(&p.sell_token_id).into_owned(),
+        buy_token_id: String::from_utf8_lossy(&p.buy_token_id).into_owned(),
+    }
+}
+
+pub(super) fn market_price_from_proto(p: proto::MarketPrice) -> MarketPrice {
+    MarketPrice {
+        sell_token_quantity: p.sell_token_quantity,
+        buy_token_quantity: p.buy_token_quantity,
+    }
 }
 
 // ── Multi-sig ─────────────────────────────────────────────────────────────────

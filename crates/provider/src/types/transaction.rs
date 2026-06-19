@@ -162,3 +162,28 @@ pub struct SignedTransaction {
     /// One signature per signer (multisig may have more than one).
     pub signatures: Vec<RecoverableSignature>,
 }
+
+impl SignedTransaction {
+    /// Estimate the bandwidth (bytes) this transaction will consume on-chain.
+    ///
+    /// Bandwidth equals the byte size of the fully-serialized protobuf
+    /// `Transaction` (including all signatures).  This matches the formula
+    /// used by the TRON node and trident's `estimateBandwidth`.
+    pub fn byte_size(&self) -> u64 {
+        use prost::Message as _;
+
+        let mut proto_tx = match crate::proto::Transaction::decode(self.raw.raw_proto.as_ref()) {
+            Ok(tx) => tx,
+            // raw_proto is always valid — it is constructed from a node response
+            // or re-encoded internally. A decode failure indicates a logic bug.
+            Err(_) => {
+                debug_assert!(false, "SignedTransaction.raw_proto failed to decode");
+                return 0;
+            }
+        };
+        for sig in &self.signatures {
+            proto_tx.signature.push(sig.to_bytes().to_vec());
+        }
+        proto_tx.encoded_len() as u64
+    }
+}

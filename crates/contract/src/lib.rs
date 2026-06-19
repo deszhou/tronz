@@ -10,6 +10,9 @@ extern crate self as tronz_contract;
 /// Static TRC20 ABI bindings and encode/decode helpers.
 pub mod trc20;
 
+/// Static TRC721 ABI bindings and encode/decode helpers.
+pub mod trc721;
+
 /// Event log decoding helpers for TRON smart contracts.
 pub mod event;
 /// Re-exported alloy ABI types for use with generated calls.
@@ -46,3 +49,5 @@ mod deploy;
 pub use deploy::DeployBuilder;
 #[cfg(feature = "provider")]
 pub use trc20::{Trc20Error, Trc20Ext, Trc20Instance};
+#[cfg(feature = "provider")]
+pub use trc721::{Trc721Error, Trc721Ext, Trc721Instance};

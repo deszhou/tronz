@@ -12,15 +12,17 @@ use crate::types::{
     AccountInfo, AccountNet, AccountPermissionUpdateContract, AccountResource, AssetInfo,
     AssetIssueContract, BlockInfo, ChainProperties, ClearContractAbiContract, ConstantCallResult,
     CreateAccountContract, CreateSmartContract, CreateWitnessContract, DelegatedResource,
-    DelegatedResourceIndex, FreezeBalanceV1Contract, FreezeBalanceV2Contract, NodeAddress,
-    NodeInfo, ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract,
-    ProposalDeleteContract, ProposalInfo, RawTransaction, SetAccountIdContract, SignWeight,
-    SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract, TransferContract,
-    TriggerSmartContract, UnDelegateResourceContract, UnfreezeAssetContract,
-    UnfreezeBalanceV1Contract, UnfreezeBalanceV2Contract, UpdateAccountContract,
-    UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract, UpdateSettingContract,
-    UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
-    WithdrawExpireUnfreezeContract, WitnessInfo,
+    DelegatedResourceIndex, ExchangeCreateContract, ExchangeInfo, ExchangeInjectContract,
+    ExchangeTransactionContract, ExchangeWithdrawContract, FreezeBalanceV1Contract,
+    FreezeBalanceV2Contract, MarketCancelOrderContract, MarketOrderInfo, MarketOrderPair,
+    MarketPrice, MarketSellAssetContract, NodeAddress, NodeInfo, ParticipateAssetIssueContract,
+    ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, ProposalInfo,
+    RawTransaction, SetAccountIdContract, SignWeight, SignedTransaction, SmartContractInfo,
+    TransactionInfo, TransferAssetContract, TransferContract, TriggerSmartContract,
+    UnDelegateResourceContract, UnfreezeAssetContract, UnfreezeBalanceV1Contract,
+    UnfreezeBalanceV2Contract, UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract,
+    UpdateEnergyLimitContract, UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract,
+    WithdrawBalanceContract, WithdrawExpireUnfreezeContract, WitnessInfo,
 };
 
 pub mod grpc;
@@ -518,15 +520,19 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
 
     /// Query the sign-weight status for a transaction (how many sigs are
     /// present and whether the threshold is met).
+    ///
+    /// Takes a [`SignedTransaction`] so the already-collected signatures are
+    /// included; the node uses them to compute `current_weight` and the
+    /// approved-address list.
     fn get_transaction_sign_weight(
         &self,
-        tx: &RawTransaction,
+        tx: &SignedTransaction,
     ) -> impl Future<Output = Result<SignWeight, Self::Error>> + Send;
 
     /// Fetch the list of addresses that have already signed a transaction.
     fn get_transaction_approved_list(
         &self,
-        tx: &RawTransaction,
+        tx: &SignedTransaction,
     ) -> impl Future<Output = Result<Vec<Address>, Self::Error>> + Send;
 
     // --- Account net ---
@@ -572,4 +578,95 @@ pub trait TronTransport: Clone + Send + Sync + 'static {
         &self,
         address: Address,
     ) -> impl Future<Output = Result<u64, Self::Error>> + Send;
+
+    // --- DEX (built-in Bancor exchange) ---
+
+    /// Build a transaction that creates a new TRC10 exchange pair.
+    fn exchange_create(
+        &self,
+        params: ExchangeCreateContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Build a transaction that injects liquidity into an exchange pair.
+    fn exchange_inject(
+        &self,
+        params: ExchangeInjectContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Build a transaction that withdraws liquidity from an exchange pair.
+    fn exchange_withdraw(
+        &self,
+        params: ExchangeWithdrawContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Build a transaction that executes a swap on an exchange pair.
+    fn exchange_transaction(
+        &self,
+        params: ExchangeTransactionContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// List all exchange pairs on-chain.
+    fn list_exchanges(&self) -> impl Future<Output = Result<Vec<ExchangeInfo>, Self::Error>> + Send;
+
+    /// Fetch a paginated list of exchange pairs.
+    fn get_paginated_exchange_list(
+        &self,
+        offset: i64,
+        limit: i64,
+    ) -> impl Future<Output = Result<Vec<ExchangeInfo>, Self::Error>> + Send;
+
+    /// Fetch a single exchange pair by its ID.
+    ///
+    /// Returns `None` if no exchange with that ID exists.
+    fn get_exchange_by_id(
+        &self,
+        exchange_id: i64,
+    ) -> impl Future<Output = Result<Option<ExchangeInfo>, Self::Error>> + Send;
+
+    // --- Market (order-book DEX) ---
+
+    /// Build a transaction that places a limit sell order.
+    fn market_sell_asset(
+        &self,
+        params: MarketSellAssetContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Build a transaction that cancels an open market order.
+    fn market_cancel_order(
+        &self,
+        params: MarketCancelOrderContract,
+    ) -> impl Future<Output = Result<RawTransaction, Self::Error>> + Send;
+
+    /// Fetch a market order by its ID.
+    ///
+    /// Returns `None` if no order with that ID exists.
+    fn get_market_order_by_id(
+        &self,
+        order_id: &[u8],
+    ) -> impl Future<Output = Result<Option<MarketOrderInfo>, Self::Error>> + Send;
+
+    /// Fetch all market orders placed by `address`.
+    fn get_market_order_by_account(
+        &self,
+        address: Address,
+    ) -> impl Future<Output = Result<Vec<MarketOrderInfo>, Self::Error>> + Send;
+
+    /// Fetch the price levels for a trading pair.
+    fn get_market_price_by_pair(
+        &self,
+        sell_token_id: &str,
+        buy_token_id: &str,
+    ) -> impl Future<Output = Result<Vec<MarketPrice>, Self::Error>> + Send;
+
+    /// Fetch all open orders for a trading pair.
+    fn get_market_order_list_by_pair(
+        &self,
+        sell_token_id: &str,
+        buy_token_id: &str,
+    ) -> impl Future<Output = Result<Vec<MarketOrderInfo>, Self::Error>> + Send;
+
+    /// Fetch all active trading pairs on the order-book DEX.
+    fn get_market_pair_list(
+        &self,
+    ) -> impl Future<Output = Result<Vec<MarketOrderPair>, Self::Error>> + Send;
 }

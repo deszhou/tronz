@@ -10,7 +10,7 @@ use crate::{
     fillers::{FeeLimitFiller, HasSigner, Identity, JoinFill, SignerFiller, TaposFiller, TxFiller},
     provider::{PendingTransaction, RootProvider, TronProvider},
     transport::{TronTransport, grpc::GrpcTransport},
-    types::{ContractType, SignedTransaction, TransactionRequest},
+    types::{ContractType, RawTransaction, SignedTransaction, TransactionRequest},
 };
 
 /// Accumulates fillers and finally binds a transport to produce a
@@ -178,6 +178,43 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
     // ── send_transaction ─────────────────────────────────────────────────────
 
     async fn send_transaction(&self, req: TransactionRequest) -> Result<PendingTransaction<Self>> {
+        // Build (fill TAPOS / fee-limit + node round-trip), then sign & broadcast.
+        let raw = self.build_transaction(req).await?;
+
+        let sig = self
+            .filler
+            .sign(raw.tx_id())
+            .await
+            .ok_or(Error::no_signer())?
+            .map_err(Error::local_usage)?;
+
+        let tx_id = raw.tx_id();
+        let signed = SignedTransaction {
+            raw,
+            signatures: vec![sig],
+        };
+        self.inner
+            .transport()
+            .broadcast_transaction(&signed)
+            .await
+            .map_err(|e| Error::Transport(e.into()))?;
+
+        Ok(PendingTransaction::new(self.clone(), tx_id))
+    }
+
+    // `broadcast` uses the `TronProvider` trait default implementation.
+}
+
+impl<T: TronTransport, F: TxFiller + HasSigner + 'static> FilledProvider<T, F> {
+    /// Run all fillers and build the node-side transaction **without signing or
+    /// broadcasting it**.
+    ///
+    /// Returns the unsigned [`RawTransaction`]. Sign it once (single-sig) or
+    /// collect multiple signatures (multisig) and submit via
+    /// [`TronProvider::broadcast`]. For the common single-signer case prefer
+    /// [`TronProvider::send_transaction`], which fills, signs, and broadcasts in
+    /// one step.
+    pub async fn build_transaction(&self, req: TransactionRequest) -> Result<RawTransaction> {
         // ── 1. Fill (sync then async) ────────────────────────────────────────
         let filler = self.filler.clone();
         let mut req = req;
@@ -185,139 +222,53 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         let mut req = filler.fill(req, self).await?;
         filler.fill_sync(&mut req); // second sync pass after async fill
 
-        // ── 2. Route contract → transport call ───────────────────────────────
+        // ── 2. Route contract → transport build call ─────────────────────────
         let contract = req
             .contract
             .take()
             .ok_or(Error::missing_field("contract"))?;
         let transport = self.inner.transport();
 
-        let mut raw = match contract {
-            ContractType::Transfer(c) => transport
-                .transfer_trx(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::TriggerSmartContract(c) => transport
-                .trigger_smart_contract(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::FreezeBalanceV1(c) => transport
-                .freeze_balance_v1(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UnfreezeBalanceV1(c) => transport
-                .unfreeze_balance_v1(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::FreezeBalanceV2(c) => transport
-                .freeze_balance_v2(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UnfreezeBalanceV2(c) => transport
-                .unfreeze_balance_v2(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::DelegateResource(c) => transport
-                .delegate_resource(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UnDelegateResource(c) => transport
-                .undelegate_resource(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::WithdrawExpireUnfreeze(c) => transport
-                .withdraw_expire_unfreeze(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::CancelAllUnfreezeV2(c) => transport
-                .cancel_all_unfreeze_v2(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::WithdrawBalance(c) => transport
-                .withdraw_balance(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::AccountPermissionUpdate(c) => transport
-                .account_permission_update(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::CreateSmartContract(c) => transport
-                .create_smart_contract(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::AssetIssue(c) => transport
-                .create_asset_issue(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::TransferAsset(c) => transport
-                .transfer_asset(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::ParticipateAssetIssue(c) => transport
-                .participate_asset_issue(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UnfreezeAsset(c) => transport
-                .unfreeze_asset(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UpdateAsset(c) => transport
-                .update_asset(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::CreateAccount(c) => transport
-                .create_account(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::VoteWitness(c) => transport
-                .vote_witness_account(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UpdateAccount(c) => transport
-                .update_account(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::ProposalCreate(c) => transport
-                .proposal_create(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::ProposalApprove(c) => transport
-                .proposal_approve(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::ProposalDelete(c) => transport
-                .proposal_delete(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::CreateWitness(c) => transport
-                .create_witness(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UpdateWitness(c) => transport
-                .update_witness(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UpdateBrokerage(c) => transport
-                .update_brokerage(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::SetAccountId(c) => transport
-                .set_account_id(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::ClearContractAbi(c) => transport
-                .clear_contract_abi(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UpdateSetting(c) => transport
-                .update_setting(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
-            ContractType::UpdateEnergyLimit(c) => transport
-                .update_energy_limit(c)
-                .await
-                .map_err(|e| Error::Transport(e.into()))?,
+        let raw_result = match contract {
+            ContractType::Transfer(c) => transport.transfer_trx(c).await,
+            ContractType::TriggerSmartContract(c) => transport.trigger_smart_contract(c).await,
+            ContractType::FreezeBalanceV1(c) => transport.freeze_balance_v1(c).await,
+            ContractType::UnfreezeBalanceV1(c) => transport.unfreeze_balance_v1(c).await,
+            ContractType::FreezeBalanceV2(c) => transport.freeze_balance_v2(c).await,
+            ContractType::UnfreezeBalanceV2(c) => transport.unfreeze_balance_v2(c).await,
+            ContractType::DelegateResource(c) => transport.delegate_resource(c).await,
+            ContractType::UnDelegateResource(c) => transport.undelegate_resource(c).await,
+            ContractType::WithdrawExpireUnfreeze(c) => transport.withdraw_expire_unfreeze(c).await,
+            ContractType::CancelAllUnfreezeV2(c) => transport.cancel_all_unfreeze_v2(c).await,
+            ContractType::WithdrawBalance(c) => transport.withdraw_balance(c).await,
+            ContractType::AccountPermissionUpdate(c) => transport.account_permission_update(c).await,
+            ContractType::CreateSmartContract(c) => transport.create_smart_contract(c).await,
+            ContractType::AssetIssue(c) => transport.create_asset_issue(c).await,
+            ContractType::TransferAsset(c) => transport.transfer_asset(c).await,
+            ContractType::ParticipateAssetIssue(c) => transport.participate_asset_issue(c).await,
+            ContractType::UnfreezeAsset(c) => transport.unfreeze_asset(c).await,
+            ContractType::UpdateAsset(c) => transport.update_asset(c).await,
+            ContractType::CreateAccount(c) => transport.create_account(c).await,
+            ContractType::VoteWitness(c) => transport.vote_witness_account(c).await,
+            ContractType::UpdateAccount(c) => transport.update_account(c).await,
+            ContractType::ProposalCreate(c) => transport.proposal_create(c).await,
+            ContractType::ProposalApprove(c) => transport.proposal_approve(c).await,
+            ContractType::ProposalDelete(c) => transport.proposal_delete(c).await,
+            ContractType::CreateWitness(c) => transport.create_witness(c).await,
+            ContractType::UpdateWitness(c) => transport.update_witness(c).await,
+            ContractType::UpdateBrokerage(c) => transport.update_brokerage(c).await,
+            ContractType::SetAccountId(c) => transport.set_account_id(c).await,
+            ContractType::ClearContractAbi(c) => transport.clear_contract_abi(c).await,
+            ContractType::UpdateSetting(c) => transport.update_setting(c).await,
+            ContractType::UpdateEnergyLimit(c) => transport.update_energy_limit(c).await,
+            ContractType::ExchangeCreate(c) => transport.exchange_create(c).await,
+            ContractType::ExchangeInject(c) => transport.exchange_inject(c).await,
+            ContractType::ExchangeWithdraw(c) => transport.exchange_withdraw(c).await,
+            ContractType::ExchangeTransaction(c) => transport.exchange_transaction(c).await,
+            ContractType::MarketSellAsset(c) => transport.market_sell_asset(c).await,
+            ContractType::MarketCancelOrder(c) => transport.market_cancel_order(c).await,
         };
+        let mut raw = raw_result.map_err(|e| Error::Transport(e.into()))?;
 
         // ── 3. Apply fee_limit / memo / permission_id ────────────────────────
         raw.apply_request_fields(
@@ -327,35 +278,6 @@ impl<T: TronTransport, F: TxFiller + HasSigner + 'static> TronProvider for Fille
         )
         .map_err(Error::Transport)?;
 
-        // ── 4. Sign ──────────────────────────────────────────────────────────
-        let sig = self
-            .filler
-            .sign(raw.tx_id())
-            .await
-            .ok_or(Error::no_signer())?
-            .map_err(Error::local_usage)?;
-
-        // ── 5. Broadcast ─────────────────────────────────────────────────────
-        let tx_id = raw.tx_id();
-        let signed = SignedTransaction {
-            raw,
-            signatures: vec![sig],
-        };
-        transport
-            .broadcast_transaction(&signed)
-            .await
-            .map_err(|e| Error::Transport(e.into()))?;
-
-        Ok(PendingTransaction::new(self.clone(), tx_id))
-    }
-
-    async fn broadcast(&self, tx: SignedTransaction) -> Result<PendingTransaction<Self>> {
-        let tx_id = tx.raw.tx_id();
-        self.inner
-            .transport()
-            .broadcast_transaction(&tx)
-            .await
-            .map_err(|e| Error::Transport(e.into()))?;
-        Ok(PendingTransaction::new(self.clone(), tx_id))
+        Ok(raw)
     }
 }

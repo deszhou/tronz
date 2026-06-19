@@ -28,14 +28,17 @@ use crate::{
         AssetIssueContract, BlockInfo, CancelAllUnfreezeV2Contract, ChainProperties,
         ClearContractAbiContract, ConstantCallResult, CreateAccountContract, CreateSmartContract,
         CreateWitnessContract, DelegateResourceContract, DelegatedResource, DelegatedResourceIndex,
-        FreezeBalanceV1Contract, FreezeBalanceV2Contract, NodeAddress, NodeInfo,
-        ParticipateAssetIssueContract, ProposalApproveContract, ProposalCreateContract,
-        ProposalDeleteContract, ProposalInfo, RawTransaction, SetAccountIdContract, SignWeight,
-        SignedTransaction, SmartContractInfo, TransactionInfo, TransferAssetContract,
-        TransferContract, TriggerSmartContract, UnDelegateResourceContract, UnfreezeAssetContract,
-        UnfreezeBalanceV1Contract, UnfreezeBalanceV2Contract, UpdateAccountContract,
-        UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract,
-        UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
+        ExchangeCreateContract, ExchangeInfo, ExchangeInjectContract, ExchangeTransactionContract,
+        ExchangeWithdrawContract, FreezeBalanceV1Contract, FreezeBalanceV2Contract,
+        MarketCancelOrderContract, MarketOrderInfo, MarketOrderPair, MarketPrice,
+        MarketSellAssetContract, NodeAddress, NodeInfo, ParticipateAssetIssueContract,
+        ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, ProposalInfo,
+        RawTransaction, SetAccountIdContract, SignWeight, SignedTransaction, SmartContractInfo,
+        TransactionInfo, TransferAssetContract, TransferContract, TriggerSmartContract,
+        UnDelegateResourceContract, UnfreezeAssetContract, UnfreezeBalanceV1Contract,
+        UnfreezeBalanceV2Contract, UpdateAccountContract, UpdateAssetContract,
+        UpdateBrokerageContract, UpdateEnergyLimitContract, UpdateSettingContract,
+        UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
         WithdrawExpireUnfreezeContract, WitnessInfo,
     },
 };
@@ -179,6 +182,19 @@ impl GrpcTransport {
     }
 }
 
+/// Decode a [`SignedTransaction`]'s unsigned proto and append its collected
+/// signatures, producing the wire `Transaction` used for broadcast and for
+/// sign-weight / approved-list queries.
+fn signed_to_proto(tx: &SignedTransaction) -> Result<proto::Transaction, TransportErrorKind> {
+    use prost::Message as _;
+
+    let mut proto_tx = proto::Transaction::decode(tx.raw.raw_proto.as_ref())?;
+    for sig in &tx.signatures {
+        proto_tx.signature.push(sig.to_bytes().to_vec());
+    }
+    Ok(proto_tx)
+}
+
 /// Decode a lowercase hex string into bytes using only the standard library.
 fn decode_hex(s: &str) -> Result<Vec<u8>, String> {
     if s.len() % 2 != 0 {
@@ -253,12 +269,7 @@ impl TronTransport for GrpcTransport {
     // --- Transaction ---
 
     async fn broadcast_transaction(&self, tx: &SignedTransaction) -> Result<(), Self::Error> {
-        use proto::Transaction;
-
-        let mut proto_tx = Transaction::decode(tx.raw.raw_proto.as_ref())?;
-        for sig in &tx.signatures {
-            proto_tx.signature.push(sig.to_bytes().to_vec());
-        }
+        let proto_tx = signed_to_proto(tx)?;
 
         let ret = self
             .wallet_client()
@@ -1309,10 +1320,9 @@ impl TronTransport for GrpcTransport {
 
     async fn get_transaction_sign_weight(
         &self,
-        tx: &RawTransaction,
+        tx: &SignedTransaction,
     ) -> Result<SignWeight, Self::Error> {
-        use prost::Message as _;
-        let proto_tx = proto::Transaction::decode(tx.raw_proto.as_ref())?;
+        let proto_tx = signed_to_proto(tx)?;
         let weight = self
             .wallet_client()
             .get_transaction_sign_weight(proto_tx)
@@ -1323,10 +1333,9 @@ impl TronTransport for GrpcTransport {
 
     async fn get_transaction_approved_list(
         &self,
-        tx: &RawTransaction,
+        tx: &SignedTransaction,
     ) -> Result<Vec<Address>, Self::Error> {
-        use prost::Message as _;
-        let proto_tx = proto::Transaction::decode(tx.raw_proto.as_ref())?;
+        let proto_tx = signed_to_proto(tx)?;
         let approved = self
             .wallet_client()
             .get_transaction_approved_list(proto_tx)
@@ -1429,5 +1438,222 @@ impl TronTransport for GrpcTransport {
             .await?
             .into_inner();
         Ok(res.num as u64)
+    }
+
+    // --- DEX (Bancor exchange) ---
+
+    async fn exchange_create(
+        &self,
+        params: ExchangeCreateContract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = codec::exchange_create_to_proto(params);
+        let ext = self
+            .wallet_client()
+            .exchange_create(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
+    async fn exchange_inject(
+        &self,
+        params: ExchangeInjectContract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = codec::exchange_inject_to_proto(params);
+        let ext = self
+            .wallet_client()
+            .exchange_inject(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
+    async fn exchange_withdraw(
+        &self,
+        params: ExchangeWithdrawContract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = codec::exchange_withdraw_to_proto(params);
+        let ext = self
+            .wallet_client()
+            .exchange_withdraw(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
+    async fn exchange_transaction(
+        &self,
+        params: ExchangeTransactionContract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = codec::exchange_transaction_to_proto(params);
+        let ext = self
+            .wallet_client()
+            .exchange_transaction(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
+    async fn list_exchanges(&self) -> Result<Vec<ExchangeInfo>, Self::Error> {
+        let list = self
+            .wallet_client()
+            .list_exchanges(EmptyMessage {})
+            .await?
+            .into_inner();
+        list.exchanges
+            .into_iter()
+            .map(codec::exchange_info_from_proto)
+            .collect()
+    }
+
+    async fn get_paginated_exchange_list(
+        &self,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<ExchangeInfo>, Self::Error> {
+        let req = proto::PaginatedMessage { offset, limit };
+        let list = self
+            .wallet_client()
+            .get_paginated_exchange_list(req)
+            .await?
+            .into_inner();
+        list.exchanges
+            .into_iter()
+            .map(codec::exchange_info_from_proto)
+            .collect()
+    }
+
+    async fn get_exchange_by_id(
+        &self,
+        exchange_id: i64,
+    ) -> Result<Option<ExchangeInfo>, Self::Error> {
+        let mut id_bytes = [0u8; 8];
+        id_bytes.copy_from_slice(&exchange_id.to_be_bytes());
+        let req = proto::BytesMessage {
+            value: id_bytes.to_vec(),
+        };
+        let exchange = self
+            .wallet_client()
+            .get_exchange_by_id(req)
+            .await?
+            .into_inner();
+        if exchange.exchange_id == 0 && exchange.creator_address.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(codec::exchange_info_from_proto(exchange)?))
+    }
+
+    // --- Market (order-book DEX) ---
+
+    async fn market_sell_asset(
+        &self,
+        params: MarketSellAssetContract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = codec::market_sell_asset_to_proto(params);
+        let ext = self
+            .wallet_client()
+            .market_sell_asset(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
+    async fn market_cancel_order(
+        &self,
+        params: MarketCancelOrderContract,
+    ) -> Result<RawTransaction, Self::Error> {
+        let req = codec::market_cancel_order_to_proto(params);
+        let ext = self
+            .wallet_client()
+            .market_cancel_order(req)
+            .await?
+            .into_inner();
+        Self::raw_from_extention(ext)
+    }
+
+    async fn get_market_order_by_id(
+        &self,
+        order_id: &[u8],
+    ) -> Result<Option<MarketOrderInfo>, Self::Error> {
+        let req = proto::BytesMessage {
+            value: order_id.to_vec(),
+        };
+        let order = self
+            .wallet_client()
+            .get_market_order_by_id(req)
+            .await?
+            .into_inner();
+        if order.order_id.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(codec::market_order_from_proto(order)?))
+    }
+
+    async fn get_market_order_by_account(
+        &self,
+        address: Address,
+    ) -> Result<Vec<MarketOrderInfo>, Self::Error> {
+        let req = proto::BytesMessage {
+            value: address.as_bytes().to_vec(),
+        };
+        let list = self
+            .wallet_client()
+            .get_market_order_by_account(req)
+            .await?
+            .into_inner();
+        list.orders
+            .into_iter()
+            .map(codec::market_order_from_proto)
+            .collect()
+    }
+
+    async fn get_market_price_by_pair(
+        &self,
+        sell_token_id: &str,
+        buy_token_id: &str,
+    ) -> Result<Vec<MarketPrice>, Self::Error> {
+        let req = proto::MarketOrderPair {
+            sell_token_id: sell_token_id.as_bytes().to_vec(),
+            buy_token_id: buy_token_id.as_bytes().to_vec(),
+        };
+        let list = self
+            .wallet_client()
+            .get_market_price_by_pair(req)
+            .await?
+            .into_inner();
+        Ok(list.prices.into_iter().map(codec::market_price_from_proto).collect())
+    }
+
+    async fn get_market_order_list_by_pair(
+        &self,
+        sell_token_id: &str,
+        buy_token_id: &str,
+    ) -> Result<Vec<MarketOrderInfo>, Self::Error> {
+        let req = proto::MarketOrderPair {
+            sell_token_id: sell_token_id.as_bytes().to_vec(),
+            buy_token_id: buy_token_id.as_bytes().to_vec(),
+        };
+        let list = self
+            .wallet_client()
+            .get_market_order_list_by_pair(req)
+            .await?
+            .into_inner();
+        list.orders
+            .into_iter()
+            .map(codec::market_order_from_proto)
+            .collect()
+    }
+
+    async fn get_market_pair_list(&self) -> Result<Vec<MarketOrderPair>, Self::Error> {
+        let list = self
+            .wallet_client()
+            .get_market_pair_list(EmptyMessage {})
+            .await?
+            .into_inner();
+        Ok(list
+            .order_pair
+            .into_iter()
+            .map(codec::market_order_pair_from_proto)
+            .collect())
     }
 }
