@@ -11,6 +11,8 @@ An idiomatic, async-first Rust SDK for the [TRON](https://tron.network) network 
 ## Features
 
 - **gRPC transport** — connects to TronGrid or any full node via tonic
+- **Resilient by default** — per-call timeouts plus automatic retries with exponential back-off and jitter, configurable via `ProviderBuilder` / `GrpcTransport::builder()`
+- **Failover** — load-balance and fail over across multiple equivalent endpoints (`with_endpoints`, tonic `balance_list`)
 - **Typed provider** — fluent builder API for every native contract operation
 - **Filler chain** — automatic TAPOS, fee-limit, and signing (mirrors alloy's `JoinFill`)
 - **TRX / TRC10 / TRC20** — transfers, balance queries, and token metadata
@@ -34,7 +36,7 @@ Or add it to your `Cargo.toml` manually:
 
 ```toml
 [dependencies]
-tronz = "0.1"
+tronz = "0.2"
 ```
 
 Optional features:
