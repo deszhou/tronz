@@ -15,7 +15,7 @@ cargo add tronz --features full
 Or in your `Cargo.toml`:
 
 ```toml
-tronz = { version = "0.1", features = ["full"] }
+tronz = { version = "0.2", features = ["full"] }
 ```
 
 A full list of available features can be found in the
