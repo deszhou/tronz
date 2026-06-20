@@ -30,9 +30,23 @@ use crate::{
     },
 };
 
+pub(crate) mod private {
+    /// Sealed marker: only this crate may implement [`TronProvider`](super::TronProvider).
+    ///
+    /// Sealing lets the SDK grow the provider surface (new reads, builders) in
+    /// minor releases without breaking downstream code, and keeps the
+    /// transport-delegation contract an internal detail. Tests compose the
+    /// in-crate providers over `MockTransport` (feature `mock`).
+    pub trait Sealed {}
+}
+
 /// The primary user-facing interface: reads, lazy operation builders, and
 /// low-level send/broadcast.
-pub trait TronProvider: Clone + Send + Sync + 'static {
+///
+/// This trait is **sealed** — only `tronz` may implement it. To test against a
+/// provider, build one of the concrete providers over the `MockTransport`
+/// available under the `mock` feature.
+pub trait TronProvider: Clone + Send + Sync + 'static + private::Sealed {
     /// The underlying transport type.
     type Transport: TronTransport;
 
@@ -435,10 +449,14 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
         }
     }
 
-    /// Query sign-weight for a transaction.
+    /// Query sign-weight for a transaction: how much signature weight has been
+    /// collected so far and whether the permission threshold is met.
+    ///
+    /// Pass the partially- or fully-signed [`SignedTransaction`] so the node can
+    /// count the already-attached signatures.
     fn get_transaction_sign_weight(
         &self,
-        tx: &RawTransaction,
+        tx: &SignedTransaction,
     ) -> impl Future<Output = Result<SignWeight>> + Send {
         let t = self.transport().clone();
         let tx = tx.clone();
@@ -452,7 +470,7 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
     /// Fetch addresses that have already signed a transaction.
     fn get_transaction_approved_list(
         &self,
-        tx: &RawTransaction,
+        tx: &SignedTransaction,
     ) -> impl Future<Output = Result<Vec<Address>>> + Send {
         let t = self.transport().clone();
         let tx = tx.clone();
@@ -710,6 +728,14 @@ pub trait TronProvider: Clone + Send + Sync + 'static {
     }
 
     // ---------- Low-level ----------
+
+    /// Estimate the bandwidth (bytes) a signed transaction will consume on-chain.
+    ///
+    /// This is a pure local computation — no network call is made.
+    /// Equivalent to trident's `estimateBandwidth(Transaction)`.
+    fn estimate_bandwidth(&self, tx: &SignedTransaction) -> u64 {
+        tx.byte_size()
+    }
 
     /// Fill, sign, and broadcast a pre-built request.
     ///

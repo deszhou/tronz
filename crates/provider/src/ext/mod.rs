@@ -15,12 +15,19 @@
 //!     .await?;
 //! ```
 
+mod exchange;
 mod governance;
+mod market;
 mod trc10;
 mod witness;
+pub use exchange::{
+    ExchangeApi, ExchangeCreateBuilder, ExchangeInjectBuilder, ExchangeTradeBuilder,
+    ExchangeWithdrawBuilder,
+};
 pub use governance::{
     ApproveProposalBuilder, CancelProposalBuilder, GovernanceApi, SubmitProposalBuilder,
 };
+pub use market::{MarketApi, MarketCancelBuilder, MarketSellBuilder};
 pub use trc10::{
     IssueTrc10Builder, ParticipateTrc10Builder, TransferTrc10Builder, Trc10Api,
     UnfreezeTrc10Builder, UpdateTrc10Builder,

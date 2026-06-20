@@ -6,6 +6,8 @@
 pub mod account;
 pub mod block;
 pub mod contract;
+pub mod exchange;
+pub mod market;
 pub mod network;
 pub mod receipt;
 pub mod transaction;
@@ -19,16 +21,19 @@ pub use block::BlockInfo;
 pub use contract::{
     AccountPermissionUpdateContract, AssetIssueContract, CancelAllUnfreezeV2Contract,
     ClearContractAbiContract, ConstantCallResult, ContractType, CreateAccountContract,
-    CreateSmartContract, CreateWitnessContract, DelegateResourceContract, FreezeBalanceV1Contract,
-    FreezeBalanceV2Contract, FrozenSupply, ParticipateAssetIssueContract, Permission,
-    PermissionKey, ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract,
-    SetAccountIdContract, SmartContractInfo, SrVote, TransferAssetContract, TransferContract,
-    TriggerSmartContract, UnDelegateResourceContract, UnfreezeAssetContract,
-    UnfreezeBalanceV1Contract, UnfreezeBalanceV2Contract, UpdateAccountContract,
-    UpdateAssetContract, UpdateBrokerageContract, UpdateEnergyLimitContract, UpdateSettingContract,
-    UpdateWitnessContract, VoteWitnessContract, WithdrawBalanceContract,
-    WithdrawExpireUnfreezeContract,
+    CreateSmartContract, CreateWitnessContract, DelegateResourceContract, ExchangeCreateContract,
+    ExchangeInjectContract, ExchangeTransactionContract, ExchangeWithdrawContract,
+    FreezeBalanceV1Contract, FreezeBalanceV2Contract, FrozenSupply, MarketCancelOrderContract,
+    MarketSellAssetContract, ParticipateAssetIssueContract, Permission, PermissionKey,
+    ProposalApproveContract, ProposalCreateContract, ProposalDeleteContract, SetAccountIdContract,
+    SmartContractInfo, SrVote, TransferAssetContract, TransferContract, TriggerSmartContract,
+    UnDelegateResourceContract, UnfreezeAssetContract, UnfreezeBalanceV1Contract,
+    UnfreezeBalanceV2Contract, UpdateAccountContract, UpdateAssetContract, UpdateBrokerageContract,
+    UpdateEnergyLimitContract, UpdateSettingContract, UpdateWitnessContract, VoteWitnessContract,
+    WithdrawBalanceContract, WithdrawExpireUnfreezeContract,
 };
+pub use exchange::ExchangeInfo;
+pub use market::{MarketOrderInfo, MarketOrderPair, MarketOrderState, MarketPrice};
 pub use network::{
     AccountNet, ChainProperties, NodeAddress, NodeInfo, ProposalInfo, ProposalState, SignWeight,
 };

@@ -32,6 +32,16 @@ pub struct TransactionInfo {
     pub revert_reason: Option<String>,
 }
 
+impl TransactionInfo {
+    /// Whether the transaction's on-chain execution succeeded.
+    ///
+    /// A confirmed transaction can still have failed (reverted, out of energy,
+    /// etc.); this returns `true` only for a clean success.
+    pub fn is_success(&self) -> bool {
+        matches!(self.status, TxStatus::Success)
+    }
+}
+
 /// Top-level transaction status.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[non_exhaustive]

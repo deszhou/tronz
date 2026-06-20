@@ -75,6 +75,20 @@ pub enum ContractType {
     UpdateSetting(UpdateSettingContract),
     /// Update the per-call origin energy limit on a smart contract.
     UpdateEnergyLimit(UpdateEnergyLimitContract),
+    // --- DEX (built-in Bancor exchange, TRC10 pairs) ---
+    /// Create a new TRC10 exchange pair.
+    ExchangeCreate(ExchangeCreateContract),
+    /// Inject liquidity into an exchange pair.
+    ExchangeInject(ExchangeInjectContract),
+    /// Withdraw liquidity from an exchange pair.
+    ExchangeWithdraw(ExchangeWithdrawContract),
+    /// Execute a trade on an exchange pair.
+    ExchangeTransaction(ExchangeTransactionContract),
+    // --- Market (order-book DEX) ---
+    /// Place a limit sell order on the order-book DEX.
+    MarketSellAsset(MarketSellAssetContract),
+    /// Cancel an open market order.
+    MarketCancelOrder(MarketCancelOrderContract),
 }
 
 impl ContractType {
@@ -121,6 +135,12 @@ impl ContractType {
             ContractType::ClearContractAbi(c) => c.owner_address,
             ContractType::UpdateSetting(c) => c.owner_address,
             ContractType::UpdateEnergyLimit(c) => c.owner_address,
+            ContractType::ExchangeCreate(c) => c.owner_address,
+            ContractType::ExchangeInject(c) => c.owner_address,
+            ContractType::ExchangeWithdraw(c) => c.owner_address,
+            ContractType::ExchangeTransaction(c) => c.owner_address,
+            ContractType::MarketSellAsset(c) => c.owner_address,
+            ContractType::MarketCancelOrder(c) => c.owner_address,
         }
     }
 }
@@ -573,6 +593,96 @@ pub struct UpdateEnergyLimitContract {
     pub contract_address: Address,
     /// New per-call energy limit for the origin.
     pub origin_energy_limit: i64,
+}
+
+// ── DEX (built-in Bancor exchange) ───────────────────────────────────────────
+
+/// Create a new TRC10 exchange pair with an initial liquidity deposit.
+///
+/// Token IDs use `"_"` for TRX and a numeric string (e.g. `"1000001"`) for TRC10.
+#[derive(Clone, Debug)]
+pub struct ExchangeCreateContract {
+    /// Creator address.
+    pub owner_address: Address,
+    /// Token ID of the first token.
+    pub first_token_id: String,
+    /// Initial balance of the first token.
+    pub first_token_balance: i64,
+    /// Token ID of the second token.
+    pub second_token_id: String,
+    /// Initial balance of the second token.
+    pub second_token_balance: i64,
+}
+
+/// Inject additional liquidity into an existing exchange pair.
+#[derive(Clone, Debug)]
+pub struct ExchangeInjectContract {
+    /// Injector address (must be the exchange creator).
+    pub owner_address: Address,
+    /// Exchange ID.
+    pub exchange_id: i64,
+    /// Token ID of the token being injected.
+    pub token_id: String,
+    /// Amount to inject.
+    pub quant: i64,
+}
+
+/// Withdraw liquidity from an existing exchange pair.
+#[derive(Clone, Debug)]
+pub struct ExchangeWithdrawContract {
+    /// Withdrawer address (must be the exchange creator).
+    pub owner_address: Address,
+    /// Exchange ID.
+    pub exchange_id: i64,
+    /// Token ID of the token being withdrawn.
+    pub token_id: String,
+    /// Amount to withdraw.
+    pub quant: i64,
+}
+
+/// Execute a trade (swap) on an existing exchange pair.
+#[derive(Clone, Debug)]
+pub struct ExchangeTransactionContract {
+    /// Trader address.
+    pub owner_address: Address,
+    /// Exchange ID.
+    pub exchange_id: i64,
+    /// Token ID of the token being sold.
+    pub token_id: String,
+    /// Amount of the sell token to trade.
+    pub quant: i64,
+    /// Minimum amount of the other token expected in return (slippage protection).
+    pub expected: i64,
+}
+
+// ── Market Orders (order-book DEX) ───────────────────────────────────────────
+
+/// Place a limit sell order on the order-book DEX.
+///
+/// Token IDs use `"_"` for TRX and a numeric string (e.g. `"1000001"`) for TRC10.
+/// `buy_token_quantity` is the *minimum* amount of the buy token to accept — the
+/// effective limit price.
+#[derive(Clone, Debug)]
+pub struct MarketSellAssetContract {
+    /// Seller address.
+    pub owner_address: Address,
+    /// Token ID of the token being sold.
+    pub sell_token_id: String,
+    /// Quantity of the sell token to offer.
+    pub sell_token_quantity: i64,
+    /// Token ID of the token to receive.
+    pub buy_token_id: String,
+    /// Minimum quantity of the buy token to accept (sets the limit price).
+    pub buy_token_quantity: i64,
+}
+
+/// Cancel an open market order.
+#[derive(Clone, Debug)]
+pub struct MarketCancelOrderContract {
+    /// Order owner address.
+    pub owner_address: Address,
+    /// The 32-byte order ID to cancel.
+    pub order_id: Vec<u8>,
 }
 
 /// Result of a constant (read-only) smart-contract call.
